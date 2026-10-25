@@ -1,0 +1,31 @@
+# Only the app goes into the repository. Everything else at the top level stays on this PC:
+# shop data, environments, design-tool folders, working files and sheets.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/HOW_TO_RUN.md
+!/backend/
+!/frontend/
+!/scripts/
+!/docs/
+
+# Shop data never goes into version control
+data/
+
+# Environments and dependencies
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+
+# Automated tests stay on the development PC
+backend/tests/
+*.test.ts
+
+# Editor / OS
+.vscode/
+Thumbs.db
+desktop.ini
+
+# backend/frontend_dist is kept: the shop PCs have no Node.js and serve the prebuilt screens.

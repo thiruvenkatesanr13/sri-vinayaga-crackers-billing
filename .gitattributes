@@ -1,0 +1,3 @@
+# Line endings are stored as LF; Windows batch files always get CRLF, because cmd needs it for labels and goto.
+* text=auto
+*.bat text eol=crlf

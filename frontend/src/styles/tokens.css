@@ -1,0 +1,156 @@
+/* Design tokens: every colour, font, size and timing the screens use. Other style files only refer to these names.
+ * paper: oklch(97% 0.012 95) cream · accents: pear oklch(86% 0.18 95) primary · sky-cyan oklch(66% 0.18 235) · coral oklch(68% 0.24 18)
+ * type: Plus Jakarta Sans for text, JetBrains Mono for codes and labels (bundled, so it works offline)
+ * brand: the shop's own round logo (crimson and gold badge): full badge in a cream ring (login, setup), its Ganesha as a round mark with a gold ring (menu, lock screen, tab icon), black line art of the emblem (receipt)
+ * screens: laptops only, tuned for 1280x640 to 1920x1000; small-screen rules are a fallback
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces: cream with a pear-yellow pull, never pure white */
+  --color-paper: oklch(97% 0.012 95);
+  --color-paper-2: oklch(94% 0.016 95);
+  --color-paper-3: oklch(91% 0.02 95);
+  --color-surface: oklch(98.8% 0.007 95);
+
+  /* Lines */
+  --color-rule: oklch(86% 0.014 90);
+  --color-rule-2: oklch(91% 0.014 92);
+
+  /* Text: near-black with a cool tilt, never pure black */
+  --color-ink: oklch(20% 0.012 250);
+  --color-ink-2: oklch(28% 0.014 250);
+  --color-neutral: oklch(38% 0.014 100);
+  --color-muted: oklch(48% 0.014 90);
+
+  /* Pear: the primary accent (push buttons, selection, the one big number) */
+  --color-accent: oklch(86% 0.18 95);
+  --color-accent-deep: oklch(76% 0.2 95);
+  --color-accent-cast: oklch(76% 0.2 95 / 0.45);
+  --color-accent-line: oklch(56% 0.12 95);
+  --color-accent-wash: oklch(94.5% 0.055 96);
+  --color-accent-ink: oklch(20% 0.012 250);
+  /* Text-safe accent for links, tab markers and labels (sky-cyan family) */
+  --color-accent-strong: oklch(48% 0.15 240);
+  --color-focus: oklch(58% 0.19 235);
+
+  /* Sky-cyan: secondary surfaces (bookings, people) */
+  --color-accent-2: oklch(66% 0.18 235);
+  --color-accent-2-deep: oklch(56% 0.2 235);
+  --color-accent-2-wash: oklch(95.5% 0.025 230);
+
+  /* Coral: the pop, kept for one high-energy moment and for alerts */
+  --color-accent-3: oklch(68% 0.24 18);
+  --color-accent-3-deep: oklch(58% 0.26 18);
+  --color-accent-3-wash: oklch(95.8% 0.025 18);
+
+  /* Occasional accents (data colours only) */
+  --color-mint: oklch(80% 0.16 150);
+  --color-lavender: oklch(74% 0.16 305);
+
+  /* Signals (used with words or icons, never colour alone) */
+  --color-good: oklch(48% 0.13 150);
+  --color-good-wash: oklch(95.5% 0.035 150);
+  --color-good-line: oklch(85% 0.08 150);
+  --color-good-text: oklch(36% 0.1 150);
+  --color-warn: oklch(52% 0.13 60);
+  --color-warn-wash: oklch(95.5% 0.045 85);
+  --color-warn-line: oklch(85% 0.08 80);
+  --color-warn-text: oklch(38% 0.1 60);
+  --color-bad: oklch(52% 0.2 22);
+  --color-bad-wash: oklch(95.8% 0.025 18);
+  --color-bad-line: oklch(85% 0.07 18);
+  --color-bad-text: oklch(40% 0.16 22);
+  --color-bad-solid: oklch(44% 0.17 22);
+  --color-scrim: oklch(20% 0.012 250 / 0.42);
+
+  /* Interaction steps */
+  --color-rule-strong: oklch(70% 0.018 85);
+  --color-strike: oklch(70% 0.02 90);
+
+  /* Payment mix: each mode owns one accent */
+  --color-mix-cash: var(--color-accent);
+  --color-mix-upi: var(--color-accent-2);
+  --color-mix-card: var(--color-lavender);
+  --color-mix-credit: var(--color-mint);
+  --color-mix-bank: oklch(40% 0.03 250);
+
+  /* Receipt: thermal printers need solid black on white paper */
+  --color-print: oklch(0% 0 0);
+  --color-receipt-paper: oklch(100% 0 0);
+
+  /* The gold of the shop's logo ring, for the ring around the round logo mark */
+  --color-brand-gold: oklch(81% 0.155 82);
+
+  /* Lock screen after logout: near-black, like a switched-off screen */
+  --color-lock: oklch(13% 0.008 250);
+  --color-lock-ink: oklch(96% 0.01 95);
+  --color-lock-muted: oklch(70% 0.012 95);
+
+  /* Type: rounded sans throughout, mono for codes and labels */
+  --font-body: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, "Segoe UI", "Nirmala UI", sans-serif;
+  --font-display: var(--font-body);
+  --font-wordmark: var(--font-display);
+  --font-label: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-tamil: "Nirmala UI", "Noto Sans Tamil", "Latha", sans-serif;
+  --tracking-display: -0.025em;
+  --tracking-label: 0.08em;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --text-hero: clamp(2.25rem, 2.6vw + 1.4rem, 3.25rem);
+
+  /* Space (4 pt) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Rounded everything (Hum): cards 20, inputs 12, pills for buttons and chips */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+  --rule-hair: 1px;
+
+  /* Layered shadows: a tight contact shadow plus a soft ambient one */
+  --shadow-soft: 0 1px 2px oklch(20% 0.012 250 / 0.06), 0 2px 6px -2px oklch(20% 0.012 250 / 0.1);
+  --shadow-soft-hover: 0 2px 4px oklch(20% 0.012 250 / 0.06), 0 8px 16px -8px oklch(20% 0.012 250 / 0.16);
+  --shadow-card: 0 12px 32px -16px oklch(20% 0.012 250 / 0.14), 0 1px 2px oklch(20% 0.012 250 / 0.06);
+  --shadow-card-hover: 0 24px 56px -20px oklch(20% 0.012 250 / 0.18), 0 2px 6px oklch(20% 0.012 250 / 0.08);
+  --shadow-dialog: 0 32px 80px -24px oklch(20% 0.012 250 / 0.3), 0 2px 8px oklch(20% 0.012 250 / 0.08);
+
+  --tap: 44px;
+  --rail-width: 220px;
+  --rail-width-compact: 64px;
+  /* Billing panel on a laptop: wide enough for one-row bill lines */
+  --bill-width: clamp(460px, 40vw, 560px);
+  --bill-controls-width: 11.25rem;
+  --bill-amount-width: 5.75rem;
+
+  /* Motion: snappy press for buttons, a small spring for lifting tiles */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-press: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-press: 70ms;
+  --dur-quick: 140ms;
+  --dur-panel: 220ms;
+  --dur-burst: 420ms;
+  --dur-tick: 1200ms;
+  --dur-lock: 450ms;
+}
