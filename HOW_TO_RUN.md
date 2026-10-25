@@ -16,13 +16,13 @@ This file lists everything needed to get the billing software running on a Windo
 | What | Needed? | Notes |
 | --- | --- | --- |
 | Windows 10 or 11 laptop | Yes | The billing laptop. The screens are made for laptops (1280 pixels wide or more). |
-| Python 3.12 or newer, 64-bit | Yes | From python.org/downloads (tested on 3.13). Tick **Add python.exe to PATH** while installing. |
+| Python 3.13, 64-bit | Yes | Download the installer: https://www.python.org/ftp/python/3.13.17/python-3.13.17-amd64.exe (the version billing is tested on). Python 3.12, 3.14 and 3.15 also work. |
 | Google Chrome or Microsoft Edge | Yes | Edge comes with Windows. |
 | Internet | Once | Only while `install.bat` runs, to download the Python packages. |
 | A second laptop on the same Wi-Fi | Optional | For Counter 2. Nothing to install on it. |
 | 80 mm thermal receipt printer and its Windows driver | Optional | Without a printer, bills can be shown on screen instead. |
 | Google Drive for Desktop | Optional | Keeps a copy of every backup outside the laptop. |
-| Node.js 20.19 or newer | No | Only for someone who changes the screens' code. The screens come ready-built. |
+| Git, Node.js | No | Not needed to run billing: download the ZIP, and the screens come ready-built. Node.js 20.19+ only matters to someone who changes the screens' code. |
 
 ## 2. Put the folder on the billing laptop
 
@@ -34,7 +34,7 @@ This file lists everything needed to get the billing software running on a Windo
 
 ## 3. Install (once)
 
-1. Install Python (see the table above). Tick **Add python.exe to PATH**.
+1. Install Python: run the installer from the table above. On its first screen, tick **Add python.exe to PATH** (at the bottom), then click **Install Now**. Wait for **Setup was successful** and close it.
 2. Double-click `scripts\install.bat` and wait for **Installed.** It takes a few minutes the first time. It creates the Python environment (`.venv`), installs the packages and creates the empty database.
 3. Only if Counter 2 will connect:
    - Windows Settings → Network & internet → the shop Wi-Fi → set **Network profile type** to **Private**.
@@ -102,7 +102,7 @@ All scripts are in the `scripts` folder.
 
 | Problem | What to do |
 | --- | --- |
-| `install.bat` says Python is not installed | Install Python 3.12 or newer from python.org with **Add python.exe to PATH** ticked, then run `install.bat` again. |
+| `install.bat` says Python 3.12 or newer is not installed | Install Python 3.13 from the link in step 1, with **Add python.exe to PATH** ticked, then run `install.bat` again. |
 | `install.bat` fails while downloading | Check the internet connection and run it again. |
 | "The screens are missing" or "The screens are not built" | `backend\frontend_dist` is missing. Copy the full project folder again. |
 | "Billing is already running on this PC" | It is already running. Just open billing with `open_billing.bat`. |
@@ -123,3 +123,13 @@ If you copy the folder from a laptop instead, leave out:
 - `.venv` and `frontend\node_modules`: the install scripts make them on each PC, and they are large.
 
 Keep `backend\frontend_dist`. It holds the ready-built screens, so the other laptop doesn't need Node.js.
+
+### Trying it on a Mac or Linux
+
+The `.bat` scripts are for Windows, and the shop setup is Windows only. To just try billing on a Mac or Linux with Python 3.12+, run these three commands in the project folder, then open http://localhost:8000:
+
+```
+python3 -m venv .venv
+.venv/bin/python -m pip install -r backend/requirements.txt
+.venv/bin/python backend/serve.py
+```

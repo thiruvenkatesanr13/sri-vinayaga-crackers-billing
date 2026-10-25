@@ -1,5 +1,7 @@
 # Sri Vinayaga Crackers — Billing
 
+**To install and run billing on a Windows laptop, follow [HOW_TO_RUN.md](HOW_TO_RUN.md).**
+
 Billing, stock and day-closing software for Sri Vinayaga Crackers: one shop with two billing counters. The software runs on the shop's billing laptop (Counter 1). The second counter laptop opens it in Chrome or Edge over the shop Wi-Fi. The screens are designed for laptop screens (1280×640 CSS pixels and up). Billing keeps working with no internet. Backups are kept on the billing laptop and copied to a Google Drive folder.
 
 - **Backend:** Django 5.2 + Django REST Framework, SQLite (WAL), served by Waitress. Code is in `backend/`.

@@ -4,13 +4,13 @@ title Sri Vinayaga Billing - install
 cd /d "%~dp0.."
 
 set "PY="
-where py >nul 2>nul && set "PY=py -3"
+rem Prefer Python 3.13, the tested version, when it is installed; otherwise any Python 3.12 or newer.
+py -3.13 -c "" <nul >nul 2>nul && set "PY=py -3.13"
+if not defined PY where py >nul 2>nul && set "PY=py -3"
 if not defined PY where python >nul 2>nul && set "PY=python"
-if not defined PY (
-  echo Python is not installed. Install Python 3.12 or newer from python.org, tick "Add python.exe to PATH", then run this again.
-  pause
-  exit /b 1
-)
+if not defined PY goto :nopython
+%PY% -c "import sys; sys.exit(sys.version_info < (3, 12))" <nul >nul 2>nul
+if errorlevel 1 goto :nopython
 
 if not exist ".venv\Scripts\python.exe" (
   echo Creating the Python environment...
@@ -39,5 +39,12 @@ exit /b 0
 :fail
 echo.
 echo Something went wrong. Take a photo of this window and send it to ElevateYourself.
+pause
+exit /b 1
+
+:nopython
+echo Python 3.12 or newer is not installed on this PC.
+echo Install Python 3.13 from https://www.python.org/ftp/python/3.13.17/python-3.13.17-amd64.exe
+echo On its first screen tick "Add python.exe to PATH" and click Install Now. Then run this again.
 pause
 exit /b 1
