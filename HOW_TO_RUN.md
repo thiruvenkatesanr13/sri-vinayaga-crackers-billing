@@ -95,7 +95,7 @@ All scripts are in the `scripts` folder.
 | `backup_now.bat` | Makes a backup now. |
 | `restore_backup.bat` | Puts back the data from a backup. |
 | `reset_pin.bat` | Sets a new PIN when someone forgets theirs. |
-| `clear_data.bat` | Fresh start: deletes products, stock, bills and other records, and keeps people and settings. |
+| `clear_data.bat` | Fresh start: deletes everything (people, PINs, settings, products, stock, bills…) so billing starts again from the Set up screen. Backups stay. |
 | `build_frontend.bat` | For developers: rebuilds the screens after changing their code. |
 
 ## 9. If something doesn't work

@@ -106,7 +106,7 @@ If the Excel copy fails, the database backup still completes and the error shows
 
 `scripts\restore_backup.bat` (`manage.py restore_backup`) restores a backup into the live database. It refuses the Excel copy, refuses to run while the server is running, and saves a "before-restore" copy first.
 
-`scripts\clear_data.bat` (`manage.py clear_data`) is the fresh start. It deletes the models listed in `CLEARED` (products, stock and its history, bills, bookings, customers, purchases, suppliers, transfers, stock checks, expenses, day sessions, number sequences, import batches) and keeps those in `KEPT` (people, shop settings, counters, locations, the audit log). It also deletes product photos and uploaded sheets, then recreates the default categories. It saves a "before-clear" snapshot first, can run while the server is up, and records `data.clear` in the audit log. A new model must be added to one of the two lists.
+`scripts\clear_data.bat` (`manage.py clear_data`) is the full fresh start, as on a new install. It deletes every row of the models in `CLEARED`, in an order that respects the protected foreign keys: all of `core`, `catalog`, `inventory`, `sales` and `cash`, plus sessions, so everyone is logged out. It also deletes product photos and uploaded sheets. With no users left, `/api/bootstrap` reports `setup_required` and the Set up screen recreates the owner, counters, Shop, Godown and default categories. It saves a "before-clear" snapshot first and never touches `data/backups` or the Drive folder. It can run while the server is up, and the new activity log starts with one `data.clear` entry. A new model must be added to `CLEARED`.
 
 **Dashboard.** The request is `/api/dashboard?from=YYYY-MM-DD&to=YYYY-MM-DD` (today by default, up to 400 days).
 

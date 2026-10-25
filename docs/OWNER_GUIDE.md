@@ -235,13 +235,25 @@ Before restoring, the current data is always saved as `data\backups\before-resto
 
 Everything up to that backup comes back, including people, PINs, stock and bills.
 
-### Starting fresh (deleting all shop data)
+### Starting fresh (deleting everything)
 
-To remove test bills and products and start again, for example before the season:
+To wipe the laptop's billing and start again as on a new install, for example after testing or before the season:
 
-1. Double-click `scripts\clear_data.bat`. It lists what will be deleted: the products and all their stock, bills, bookings, customers, purchases and suppliers, stock moves, expenses and day closings.
-2. Type `YES`. People, PINs, shop settings, counters, the Shop and Godown, the activity log and all backups stay. Bill and booking numbers start again from 1.
-3. On **Products**, use **Import from Excel** to load the stock sheet again. If billing is open on the counters, press **F5** there.
+1. Double-click `scripts\clear_data.bat`. It lists everything that will be deleted:
+   - people and PINs
+   - shop settings
+   - counters, and the Shop and Godown
+   - products and all their stock
+   - bills, bookings and customers
+   - purchases and suppliers, stock moves
+   - expenses and day closings
+   - the activity log
+2. Type `YES`. Everyone is logged out. Backups in `data\backups` and the Google Drive folder are not touched.
+3. Press **F5** in billing on every counter. The **Set up this PC** screen appears, as in Part 1 step 6.
+   - Create the owner and PIN, and choose the counter on each laptop.
+   - Fill in **Settings** again, including the Google Drive folder under **Backup**, and add the staff.
+   - Import the stock sheet on **Products**.
+   - Bill and booking numbers start again from 1.
 
 Billing can stay running while you do this. A copy of the data is saved first as `data\backups\before-clear-<date>.sqlite3`. To undo, close the black server window and drag that file onto `restore_backup.bat`.
 

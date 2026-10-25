@@ -1,6 +1,14 @@
-"""Fresh start: delete products, stock, bills and the shop's other records. People, PINs and settings stay."""
+"""Full fresh start: delete everything in the shop's database, as on a new laptop.
 
-from django.core.files.storage import default_storage
+People and PINs, shop settings, counters, stock places, products, stock, bills and every other record
+go, and billing shows the first-time Set up screen again. Backups are not touched, and the data is
+saved first as data/backups/before-clear-<date>.sqlite3, so it can be put back.
+"""
+
+from pathlib import Path
+
+from django.conf import settings
+from django.contrib.sessions.models import Session
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.db.models import Sum
@@ -8,7 +16,6 @@ from django.utils import timezone
 
 from backups.services import data_dir, db_path, local_backup_dir, snapshot_database
 from cash.models import DaySession, Expense
-from catalog.importer import ensure_default_categories
 from catalog.models import Category, GiftBoxItem, ImportBatch, Product
 from core.audit import audit
 from core.models import AuditLog, Counter, ShopSettings, User
@@ -31,8 +38,8 @@ CLEARED = [
     Expense, DaySession,
     StockMovement, StockBalance, StockTransferLine, StockTransfer, StockAdjustment, PurchaseLine, Purchase, Supplier,
     GiftBoxItem, Product, Category, ImportBatch,
+    AuditLog, Session, Counter, Location, ShopSettings, User,
 ]
-KEPT = [User, ShopSettings, Counter, Location, AuditLog]
 
 
 def count(n: int) -> str:
@@ -47,14 +54,30 @@ def count(n: int) -> str:
     return ",".join([head] + groups if head else groups)
 
 
+def names(values: list[str], most: int = 6) -> str:
+    shown = ", ".join(values[:most])
+    return f"{shown}, ..." if len(values) > most else shown
+
+
+def delete_files(folder: Path) -> None:
+    if folder.is_dir():
+        for item in folder.rglob("*"):
+            if item.is_file():
+                item.unlink(missing_ok=True)
+
+
 class Command(BaseCommand):
-    help = "Delete products, stock, bills and the other shop records for a fresh start. People, PINs and settings stay."
+    help = "Delete everything on this PC (people, PINs, settings, products, stock, bills...) for a fresh start."
 
     def add_arguments(self, parser):
         parser.add_argument("--yes", action="store_true", help="Do not ask for confirmation")
 
     def handle(self, *args, **options):
+        people = list(User.objects.order_by("role", "display_name").values_list("display_name", flat=True))
+        shop = ShopSettings.objects.filter(pk=1).first()
+        places = list(Counter.objects.values_list("name", flat=True)) + list(Location.objects.values_list("name", flat=True))
         found = {
+            "people": len(people),
             "products": Product.objects.count(),
             "stock": StockBalance.objects.aggregate(total=Sum("quantity"))["total"] or 0,
             "bills": Invoice.objects.count(),
@@ -66,9 +89,13 @@ class Command(BaseCommand):
             "stock_checks": StockAdjustment.objects.count(),
             "expenses": Expense.objects.count(),
             "days": DaySession.objects.count(),
+            "activity": AuditLog.objects.count(),
         }
-        self.stdout.write("This deletes, on this PC:")
+        self.stdout.write("This deletes EVERYTHING on this PC, like a new install:")
         for label, text in (
+            ("People and PINs", f"{found['people']} ({names(people)})" if people else "0"),
+            ("Shop settings", f"{shop.shop_name}: details, bill numbers, GST, discounts, Google Drive folder" if shop else "not set"),
+            ("Counters, places", names(places) or "none"),
             ("Products and stock", f"{count(found['products'])} products, {count(found['stock'])} in stock"),
             ("Bills", count(found["bills"])),
             ("Bookings", count(found["bookings"])),
@@ -77,13 +104,14 @@ class Command(BaseCommand):
             ("Stock moves", f"{count(found['transfers'])} between places, {count(found['stock_checks'])} stock checks"),
             ("Expenses", count(found["expenses"])),
             ("Day closings", count(found["days"])),
+            ("Activity log", f"{count(found['activity'])} entries"),
         ):
             self.stdout.write(f"  {label:<20}{text}")
-        self.stdout.write("It keeps people and PINs, shop settings, counters, the stock places, backups and the activity log.")
-        self.stdout.write("Bill and booking numbers start again from 1.")
+        self.stdout.write("Backups are not deleted: data\\backups and the Google Drive folder stay as they are.")
+        self.stdout.write("Afterwards billing shows the first-time Set up screen, as on a new laptop.")
         self.stdout.write("")
         if not options["yes"]:
-            answer = input("Type YES to delete all of this: ")
+            answer = input("Type YES to delete everything: ")
             if answer.strip() != "YES":
                 raise CommandError("Nothing was deleted.")
 
@@ -92,22 +120,20 @@ class Command(BaseCommand):
         snapshot_database(db_path(), safety)
         self.stdout.write(f"Current data saved first as {safety.name}")
 
-        photos = list(Product.objects.exclude(photo="").values_list("photo", flat=True))
         with transaction.atomic():
             for model in CLEARED:
                 model.objects.all().delete()
-            ensure_default_categories()
-            audit(None, "data.clear", "Deleted products, stock, bills and other records for a fresh start", **found)
+            # The one line the new activity log starts with, so the owner can see when this happened.
+            audit(None, "data.clear", "Deleted everything on this PC for a fresh start", **found)
 
         # Files that belonged to the deleted records: product photos and the uploaded stock sheets.
-        for name in photos:
-            default_storage.delete(name)
-        for sheet in (data_dir() / "imports").glob("*.xlsx"):
-            sheet.unlink(missing_ok=True)
+        delete_files(Path(settings.MEDIA_ROOT))
+        delete_files(data_dir() / "imports")
 
         self.stdout.write(self.style.SUCCESS("Done. Everything above is deleted."))
-        self.stdout.write("Next: open Products and use Import from Excel to load the stock sheet.")
-        self.stdout.write("If billing is open on the counters, press F5 there to see the change.")
+        self.stdout.write("Next: press F5 in billing on every counter. The Set up this PC screen appears:")
+        self.stdout.write("  create the owner and PIN, choose the counter, fill in Settings (including the")
+        self.stdout.write("  Google Drive folder under Backup), add staff, then import the stock sheet on Products.")
         self.stdout.write(
             f"To undo: close the billing server window, then drag {safety.name} "
             "(in data\\backups) onto scripts\\restore_backup.bat."
