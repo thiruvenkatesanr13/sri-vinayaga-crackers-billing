@@ -194,13 +194,8 @@ class SettingsSerializer(serializers.ModelSerializer):
                 raise BusinessError("Number prefixes may use letters, digits, - / _ (up to 20).")
         if merged["estimate_prefix"] == merged["gst_prefix"]:
             raise BusinessError("Estimate and GST invoice need different number prefixes.")
-        for key in ("default_discount_bp", "max_discount_bp", "staff_max_discount_bp"):
-            if merged[key] > 5000:
-                raise BusinessError("Discounts above 50% are not allowed.")
-        if merged["staff_max_discount_bp"] > merged["max_discount_bp"]:
-            raise BusinessError("Staff discount limit cannot be more than the owner's limit.")
-        if merged["default_discount_bp"] > merged["staff_max_discount_bp"]:
-            raise BusinessError("The default discount cannot be more than the staff limit.")
+        if merged["default_discount_bp"] > 10000:
+            raise BusinessError("The discount on a new bill should be between 0% and 100%.")
         if merged["gst_rate_bp"] is not None and not 1 <= merged["gst_rate_bp"] <= 2800:
             raise BusinessError("GST rate should be between 0.01% and 28%.")
         gstin = (merged["gstin"] or "").strip().upper()
@@ -221,11 +216,7 @@ class SettingsSerializer(serializers.ModelSerializer):
 
 
 def settings_payload(request, shop: ShopSettings) -> dict:
-    from sales.services import max_discount_bp
-
-    data = SettingsSerializer(shop).data
-    data["my_max_discount_bp"] = max_discount_bp(request.user, shop)
-    return data
+    return SettingsSerializer(shop).data
 
 
 @api_view(["GET", "PATCH"])

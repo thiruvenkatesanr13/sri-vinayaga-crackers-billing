@@ -147,25 +147,26 @@ def _bills(book, conn) -> None:
         [
             ("Bill no", 16, "text"), ("Date", 12, "date"), ("Time", 8, "time"), ("Type", 12, "text"),
             ("Status", 11, "text"), ("Customer", 22, "text"), ("Phone", 13, "text"), ("Items", 60, "text"),
-            ("Items total", 13, "money"), ("Discount", 11, "money"), ("GST", 10, "money"), ("Round off", 10, "money"),
-            ("Total", 13, "money"), ("Advance used", 13, "money"), ("Paid by", 30, "text"), ("Booking", 14, "text"),
-            ("Counter", 12, "text"), ("Billed by", 14, "text"),
+            ("Items total", 13, "money"), ("Discount", 11, "money"), ("Adjustment", 12, "money"), ("GST", 10, "money"),
+            ("Round off", 10, "money"), ("Total", 13, "money"), ("Advance used", 13, "money"), ("Paid by", 30, "text"),
+            ("Balance due", 12, "money"), ("Booking", 14, "text"), ("Counter", 12, "text"), ("Billed by", 14, "text"),
         ],
     )
     rows = conn.execute(
         "SELECT i.id, i.number, i.business_date, i.created_at, i.doc_type, i.status, i.customer_name, i.customer_phone, "
-        "i.subtotal_paise, i.discount_paise, i.cgst_paise + i.sgst_paise, i.round_off_paise, i.total_paise, "
-        "i.advance_paise, b.number, i.counter_name, i.user_name "
+        "i.subtotal_paise, i.discount_paise, i.adjustment_paise, i.cgst_paise + i.sgst_paise, i.round_off_paise, "
+        "i.total_paise, i.advance_paise, i.balance_paise, b.number, i.counter_name, i.user_name "
         "FROM sales_invoice i LEFT JOIN sales_booking b ON b.id = i.booking_id ORDER BY i.created_at, i.id"
     )
-    for (bill_id, number, day, created, doc_type, status, name, phone, subtotal, discount, gst, round_off, total,
-         advance, booking, counter, user) in rows:
+    for (bill_id, number, day, created, doc_type, status, name, phone, subtotal, discount, adjustment, gst, round_off,
+         total, advance, balance, booking, counter, user) in rows:
         at = _local(created)
         sheet.add(
             number, _day(day), at.replace(microsecond=0).time() if at else None, DOC_TYPES.get(doc_type, doc_type),
             BILL_STATUS.get(status, status),
-            name, phone, "; ".join(items.get(bill_id, [])), subtotal, discount or None, gst or None, round_off or None,
-            total, advance or None, ", ".join(paid.get(bill_id, [])), booking, counter, user,
+            name, phone, "; ".join(items.get(bill_id, [])), subtotal, discount or None, adjustment or None, gst or None,
+            round_off or None, total, advance or None, ", ".join(paid.get(bill_id, [])), balance or None, booking,
+            counter, user,
         )
 
 

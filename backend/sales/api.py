@@ -74,6 +74,7 @@ def invoice_summary(invoice: Invoice) -> dict:
         "customer_name": invoice.customer_name,
         "customer_phone": invoice.customer_phone,
         "total_paise": invoice.total_paise,
+        "balance_paise": invoice.balance_paise,
         "print_count": invoice.print_count,
     }
 
@@ -92,8 +93,10 @@ def invoice_detail_payload(invoice: Invoice, owner: bool) -> dict:
             "cgst_paise": invoice.cgst_paise,
             "sgst_paise": invoice.sgst_paise,
             "round_off_paise": invoice.round_off_paise,
+            "adjustment_paise": invoice.adjustment_paise,
             "advance_paise": invoice.advance_paise,
             "amount_due_paise": invoice.amount_due_paise,
+            "balance_paise": invoice.balance_paise,
             "booking_number": invoice.booking.number if invoice.booking_id else None,
             "shop": invoice.shop,
             "cancelled_at": invoice.cancelled_at.isoformat() if invoice.cancelled_at else None,
@@ -111,6 +114,7 @@ def invoice_detail_payload(invoice: Invoice, owner: bool) -> dict:
                     "qty": l.qty,
                     "base_qty": l.base_qty,
                     "unit_price_paise": l.unit_price_paise,
+                    "list_price_paise": l.list_price_paise,
                     "amount_paise": l.amount_paise,
                     "group_label": l.group_label,
                 }

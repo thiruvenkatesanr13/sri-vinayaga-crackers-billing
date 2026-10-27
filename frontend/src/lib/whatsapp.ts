@@ -30,6 +30,7 @@ export function billMessage(bill: Bill): string {
   }
   out.push("", `Items total (${bill.lines.reduce((n, l) => n + l.qty, 0)}): ${rs(bill.subtotal_paise)}`);
   if (bill.discount_paise) out.push(`Discount (${pct(bill.discount_bp)}): −${rs(bill.discount_paise)}`);
+  if (bill.adjustment_paise) out.push(`Adjustment: ${bill.adjustment_paise > 0 ? "+" : ""}${rs(bill.adjustment_paise)}`);
   if (gst) {
     const half = pct((bill.gst_rate_bp ?? 0) / 2);
     out.push(`Taxable value: ${rs(bill.taxable_paise)}`, `CGST ${half}: ${rs(bill.cgst_paise)}`, `SGST ${half}: ${rs(bill.sgst_paise)}`);
@@ -40,6 +41,8 @@ export function billMessage(bill: Bill): string {
   for (const payment of bill.payments.filter((p) => p.kind !== "refund")) {
     out.push(`Paid by ${MODE_LABEL[payment.mode] ?? payment.mode}: ${rs(payment.amount_paise)}`);
   }
+  if (bill.balance_paise > 0) out.push(`*Balance due: ${rs(bill.balance_paise)}*`);
+  else if (bill.balance_paise < 0) out.push(`Paid extra: ${rs(-bill.balance_paise)}`);
   const footer = [shop.footer_thanks, shop.footer_terms].filter(Boolean);
   if (footer.length) out.push("", ...footer);
   return out.join("\n");

@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HardDrive, KeyRound, Plus } from "lucide-react";
 import { api, errorText } from "../lib/api";
 import { fmtDateTime, isToday } from "../lib/format";
-import { pct } from "../lib/money";
 import { useLocations, useSession, useSettings } from "../lib/session";
 import type { BackupStatus, Counter, Location, Role, Settings } from "../lib/types";
 import { Badge, Button, Dialog, Empty, Field, Loading, Notice, PageHead, Segmented, Tabs, useToast } from "../components/ui";
@@ -169,9 +168,12 @@ function BillsTab() {
 
       <h2 style={{ marginTop: "var(--space-4)" }}>Discount and rounding</h2>
       <div className="form-grid">
-        <Percent form={form} name="default_discount_bp" label="Discount already applied on a new bill (%)" />
-        <Percent form={form} name="staff_max_discount_bp" label="Most discount staff can give (%)" />
-        <Percent form={form} name="max_discount_bp" label="Most discount the owner can give (%)" />
+        <Percent
+          form={form}
+          name="default_discount_bp"
+          label="Discount already applied on a new bill (%)"
+          hint="Billers can give any discount from 0% to 100% on each bill."
+        />
         <Field label="Low stock warning at (units)" hint="Used when a product has no level of its own.">
           <input
             className="input"
@@ -208,9 +210,6 @@ function BillsTab() {
           </select>
         </Field>
       </div>
-      <p className="caption">
-        Current limits: staff {pct(s.staff_max_discount_bp)}, owner {pct(s.max_discount_bp)}.
-      </p>
       <SaveBar form={form} />
     </section>
   );

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type ReactNode } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Gift, Minus, Pause, Plus, Printer, ScreenShare, Search, Trash2, UserRound, X } from "lucide-react";
+import { CalendarClock, Gift, Minus, Pause, Pencil, Plus, Printer, ScreenShare, Search, Trash2, UserRound, X } from "lucide-react";
 import { api, ApiError, errorText } from "../lib/api";
 import { fmtDate, fmtTime } from "../lib/format";
-import { computeTotals, pct, rs, rsShort } from "../lib/money";
+import { computeTotals, paiseToInput, pct, rs, rsShort, toPaise } from "../lib/money";
 import { printBill, useBillOutput } from "../lib/print";
 import { useCategories, useProducts, useSession, useSettings } from "../lib/session";
 import { uuid4 } from "../lib/uuid";
@@ -105,6 +105,54 @@ function stockLabel(product: Product): { text: string; tone: "" | "low" | "out" 
   return { text: `${qty} ${product.unit_name} left`, tone: qty <= level ? "low" : "" };
 }
 
+/** "+₹8.00" or "−₹8.00": an amount that can go either way. */
+const signed = (paise: number) => (paise > 0 ? `+${rs(paise)}` : rs(paise));
+
+/** The rate on a bill line. Tap it to type a different rate for this bill only; clearing it goes back to the item's price. */
+function RateField({ rate, listRate, unit, onChange }: { rate: number; listRate: number; unit: string; onChange: (rate: number | null) => void }) {
+  const [text, setText] = useState<string | null>(null);
+  const edited = rate !== listRate;
+  if (text !== null) {
+    return (
+      <span className="rate-edit">
+        <input
+          className="input"
+          inputMode="decimal"
+          aria-label={`Rate per ${unit} on this bill`}
+          value={text}
+          autoFocus
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => {
+            setText(e.target.value);
+            const value = toPaise(e.target.value);
+            if (!e.target.value.trim()) onChange(null);
+            else if (value !== null) onChange(value === listRate ? null : value);
+          }}
+          onBlur={() => setText(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === "Escape") {
+              e.preventDefault();
+              setText(null);
+            }
+          }}
+        />
+        <span>/ {unit}</span>
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={`rate-button${edited ? " edited" : ""}`}
+      title={edited ? `Changed on this bill. The item's price is ${rs(listRate)}.` : "Tap to change the rate on this bill"}
+      onClick={() => setText(paiseToInput(rate))}
+    >
+      {rs(rate)} / {unit}
+      {edited ? <s>{rs(listRate)}</s> : null}
+    </button>
+  );
+}
+
 export default function BillingPage() {
   const { counterId, counterName } = useSession();
   const { openCounterPicker } = useOutletContext<{ openCounterPicker: () => void }>();
@@ -130,6 +178,7 @@ export default function BillingPage() {
   const [bookingPicker, setBookingPicker] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [otherDiscount, setOtherDiscount] = useState(false);
+  const [totalText, setTotalText] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const payRef = useRef<HTMLDivElement>(null);
 
@@ -180,8 +229,9 @@ export default function BillingPage() {
       draft.lines.map((line) => {
         const product = productMap.get(line.product_id);
         const factor = line.sale_unit === "case" ? (product?.units_per_case ?? 1) : 1;
-        const unitPrice = product ? product.price_paise * factor : 0;
-        return { ...line, product, factor, unitPrice, amount: unitPrice * line.qty, baseQty: line.qty * factor };
+        const listPrice = product ? product.price_paise * factor : 0;
+        const unitPrice = line.rate_paise ?? listPrice;
+        return { ...line, product, factor, listPrice, unitPrice, amount: unitPrice * line.qty, baseQty: line.qty * factor };
       }),
     [draft.lines, productMap],
   );
@@ -194,13 +244,19 @@ export default function BillingPage() {
 
   const subtotal = priced.reduce((sum, line) => sum + line.amount, 0);
   const gst = draft.doc_type === "gst";
-  const totals = computeTotals(subtotal, draft.discount_bp, {
+  const totalOptions = {
     gstRateBp: gst ? settings?.gst_rate_bp : null,
     pricesIncludeGst: settings?.prices_include_gst,
     roundOff: settings?.round_off ?? true,
-  });
+  };
+  const workedOut = computeTotals(subtotal, draft.discount_bp, totalOptions).total_paise;
+  // A typed total only counts while the bill is as it was when it was typed; changing items or the discount drops it.
+  const typedTotal =
+    draft.total_override_paise !== null && draft.total_override_paise !== undefined && draft.total_override_base === workedOut
+      ? draft.total_override_paise
+      : null;
+  const totals = computeTotals(subtotal, draft.discount_bp, { ...totalOptions, totalPaise: typedTotal });
   const due = totals.total_paise - draft.booking_advance_paise;
-  const myMax = settings?.my_max_discount_bp ?? 0;
   const unknownLines = priced.filter((l) => !l.product || !l.product.is_active);
 
   // One payment mode always covers the full amount; a newly added mode gets what is left.
@@ -211,31 +267,41 @@ export default function BillingPage() {
     }
   }, [due, modes]);
 
+  // Nothing here stops a bill from being saved: cash given that is less than the cash amount counts as what was
+  // paid in cash, and whatever is not paid is saved on the bill as the balance due.
   const payments =
     due < 0
       ? [{ mode: "cash" as PaymentMode, amount_paise: due, cash_tendered_paise: null, reference: "" }]
       : modes
-          .map((mode) => ({
-            mode,
-            amount_paise: pay[mode].amount ?? 0,
-            cash_tendered_paise: mode === "cash" ? pay[mode].tendered : null,
-            reference: pay[mode].reference,
-          }))
+          .map((mode) => {
+            const tendered = mode === "cash" ? pay.cash.tendered : null;
+            const amount = pay[mode].amount ?? 0;
+            return {
+              mode,
+              amount_paise: tendered !== null && tendered < amount ? tendered : amount,
+              cash_tendered_paise: tendered,
+              reference: pay[mode].reference,
+            };
+          })
           .filter((p) => p.amount_paise !== 0);
   const paid = payments.reduce((sum, p) => sum + p.amount_paise, 0);
   const remaining = due - paid;
   const cash = modes.includes("cash") ? pay.cash : null;
-  const change = cash && cash.tendered !== null && cash.amount !== null ? cash.tendered - cash.amount : null;
-  const tenderShort = change !== null && change < 0;
+  const change = cash && cash.tendered !== null && cash.amount !== null && cash.tendered > cash.amount ? cash.tendered - cash.amount : null;
 
-  const canSave =
-    !!counterId &&
-    draft.lines.length > 0 &&
-    unknownLines.length === 0 &&
-    remaining === 0 &&
-    !tenderShort &&
-    draft.discount_bp <= myMax &&
-    (!gst || !!settings?.gst_ready);
+  const canSave = !!counterId && draft.lines.length > 0 && unknownLines.length === 0 && (!gst || !!settings?.gst_ready);
+
+  function typeTotal(text: string) {
+    const value = toPaise(text);
+    if (!text.trim()) {
+      setDraft((d) => ({ ...d, total_override_paise: null, total_override_base: null }));
+    } else if (value !== null) {
+      const total = value + draft.booking_advance_paise;
+      setDraft((d) =>
+        total === workedOut ? { ...d, total_override_paise: null, total_override_base: null } : { ...d, total_override_paise: total, total_override_base: workedOut },
+      );
+    }
+  }
 
   const resetPayments = useCallback(() => {
     setModes(["cash"]);
@@ -247,6 +313,7 @@ export default function BillingPage() {
     setProblem(null);
     setCustomLabel(null);
     setShowCustomer(false);
+    setTotalText(null);
     resetPayments();
     setDraft(freshDraft(settings?.default_discount_bp ?? 0));
     setTab("items");
@@ -356,7 +423,14 @@ export default function BillingPage() {
         customer_phone: draft.customer_phone,
         booking_id: draft.booking_id,
         discount_bp: draft.discount_bp,
-        lines: draft.lines.map(({ product_id, sale_unit, qty, group_label }) => ({ product_id, sale_unit, qty, group_label })),
+        lines: draft.lines.map(({ product_id, sale_unit, qty, group_label, rate_paise }) => ({
+          product_id,
+          sale_unit,
+          qty,
+          group_label,
+          rate_paise: rate_paise ?? null,
+        })),
+        total_override_paise: typedTotal,
         payments,
         expected_total_paise: totals.total_paise,
       }),
@@ -364,6 +438,7 @@ export default function BillingPage() {
       setSaved(bill);
       setProblem(null);
       setCustomLabel(null);
+      setTotalText(null);
       resetPayments();
       setDraft(freshDraft(settings?.default_discount_bp ?? 0));
       setTab("bill");
@@ -532,7 +607,7 @@ export default function BillingPage() {
   groups.sort((a, b) => Number(a.label !== "") - Number(b.label !== ""));
   const itemCount = draft.lines.reduce((n, l) => n + l.qty, 0);
   const discountChoices = [0, 500, 1000, settings?.default_discount_bp ?? 0]
-    .filter((v, i, all) => v <= myMax && all.indexOf(v) === i)
+    .filter((v, i, all) => all.indexOf(v) === i)
     .sort((a, b) => a - b);
 
   return (
@@ -631,6 +706,15 @@ export default function BillingPage() {
             {saved.payments.find((p) => p.change_paise) ? (
               <div className="change" style={{ fontSize: "var(--text-lg)" }}>
                 Give change {rs(saved.payments.find((p) => p.change_paise)?.change_paise)}
+              </div>
+            ) : null}
+            {saved.balance_paise > 0 ? (
+              <div className="balance" style={{ fontSize: "var(--text-lg)" }}>
+                Balance due {rs(saved.balance_paise)}
+              </div>
+            ) : saved.balance_paise < 0 ? (
+              <div className="balance" style={{ fontSize: "var(--text-lg)" }}>
+                Paid {rs(-saved.balance_paise)} more than the bill
               </div>
             ) : null}
             <div className="row" style={{ justifyContent: "center" }}>
@@ -759,7 +843,12 @@ export default function BillingPage() {
                         <div className="info">
                           <div className="name" title={product?.name}>{product?.name ?? "Item no longer sold"}</div>
                           <div className="rate">
-                            {rs(line.unitPrice)} / {line.sale_unit === "case" ? `bundle of ${line.factor}` : product?.unit_name}
+                            <RateField
+                              rate={line.unitPrice}
+                              listRate={line.listPrice}
+                              unit={line.sale_unit === "case" ? `bundle of ${line.factor}` : (product?.unit_name ?? "unit")}
+                              onChange={(rate) => updateLine(line.key, { rate_paise: rate })}
+                            />
                             {short ? <span className="short">Only {available} in shop</span> : null}
                           </div>
                         </div>
@@ -783,10 +872,10 @@ export default function BillingPage() {
                           </div>
                           {product?.units_per_case ? (
                             <div className="unit-toggle" role="group" aria-label="Unit">
-                              <button type="button" aria-pressed={line.sale_unit === "unit"} onClick={() => updateLine(line.key, { sale_unit: "unit" })}>
+                              <button type="button" aria-pressed={line.sale_unit === "unit"} onClick={() => updateLine(line.key, { sale_unit: "unit", rate_paise: null })}>
                                 {product.unit_name}
                               </button>
-                              <button type="button" aria-pressed={line.sale_unit === "case"} onClick={() => updateLine(line.key, { sale_unit: "case" })}>
+                              <button type="button" aria-pressed={line.sale_unit === "case"} onClick={() => updateLine(line.key, { sale_unit: "case", rate_paise: null })}>
                                 Bundle
                               </button>
                             </div>
@@ -838,12 +927,11 @@ export default function BillingPage() {
                       defaultValue={draft.discount_bp ? draft.discount_bp / 100 : ""}
                       onChange={(e) => {
                         const value = Number(e.target.value);
-                        if (Number.isFinite(value) && value >= 0) setDraft((d) => ({ ...d, discount_bp: Math.round(value * 100) }));
+                        if (Number.isFinite(value) && value >= 0 && value <= 100) setDraft((d) => ({ ...d, discount_bp: Math.round(value * 100) }));
                       }}
                     />
                   ) : null}
                 </div>
-                {draft.discount_bp > myMax ? <Notice tone="bad">Discount can be at most {pct(myMax)}.</Notice> : null}
 
                 <div className="sums">
                   <span>Items total ({itemCount})</span>
@@ -852,6 +940,17 @@ export default function BillingPage() {
                     <>
                       <span>Discount {pct(draft.discount_bp)}</span>
                       <span className="num">−{rs(totals.discount_paise)}</span>
+                    </>
+                  ) : null}
+                  {totals.adjustment_paise ? (
+                    <>
+                      <span>
+                        Adjustment{" "}
+                        <button type="button" className="link-button" onClick={() => typeTotal("")}>
+                          Undo
+                        </button>
+                      </span>
+                      <span className="num">{signed(totals.adjustment_paise)}</span>
                     </>
                   ) : null}
                   {gst ? (
@@ -875,7 +974,37 @@ export default function BillingPage() {
                 </div>
                 <div className="grand">
                   <span className="small muted">{draft.booking_advance_paise ? "To collect" : "Total"}</span>
-                  <span className="figure">{rs(due)}</span>
+                  {totalText !== null ? (
+                    <input
+                      className="input total-edit"
+                      inputMode="decimal"
+                      aria-label={draft.booking_advance_paise ? "Amount to collect" : "Bill total"}
+                      value={totalText}
+                      autoFocus
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        setTotalText(e.target.value);
+                        typeTotal(e.target.value);
+                      }}
+                      onBlur={() => setTotalText(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Escape") {
+                          e.preventDefault();
+                          setTotalText(null);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="figure figure-button"
+                      title="Tap to type a different total"
+                      onClick={() => setTotalText(paiseToInput(Math.max(due, 0)))}
+                    >
+                      {rs(due)}
+                      <Pencil size={16} aria-hidden />
+                    </button>
+                  )}
                 </div>
 
                 {due > 0 ? (
@@ -908,7 +1037,6 @@ export default function BillingPage() {
                               value={pay.cash.tendered}
                               placeholder="Given"
                               ariaLabel="Cash given by customer"
-                              invalid={tenderShort}
                               onChange={(tendered) => setPay((current) => ({ ...current, cash: { ...current.cash, tendered } }))}
                             />
                           </span>
@@ -931,15 +1059,14 @@ export default function BillingPage() {
                       </div>
                     ))}
                     <div className="spread small">
-                      {remaining !== 0 ? (
-                        <span style={{ color: "var(--color-bad)", fontWeight: 700 }}>
-                          {remaining > 0 ? `${rs(remaining)} still to collect` : `${rs(-remaining)} more than the bill`}
-                        </span>
+                      {remaining > 0 ? (
+                        <span className="balance">Balance due {rs(remaining)}</span>
+                      ) : remaining < 0 ? (
+                        <span className="balance">{rs(-remaining)} more than the bill</span>
                       ) : (
                         <span className="muted">Payments match the total</span>
                       )}
-                      {change !== null && change >= 0 ? <span className="change">Change {rs(change)}</span> : null}
-                      {tenderShort ? <span style={{ color: "var(--color-bad)" }}>Cash given is less than the cash amount</span> : null}
+                      {change !== null ? <span className="change">Change {rs(change)}</span> : null}
                     </div>
                   </div>
                 ) : due < 0 ? (

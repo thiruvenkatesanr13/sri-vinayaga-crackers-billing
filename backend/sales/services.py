@@ -22,6 +22,7 @@ from .models import Booking, BookingLine, Customer, HeldBill, Invoice, InvoiceLi
 from .numbering import next_number
 
 MAX_QTY = 100_000
+MAX_PAISE = 1_000_000_000  # Rs 1 crore: no single rate or bill total is bigger
 MAX_HELD_PER_COUNTER = 3
 _PHONE = re.compile(r"^[6-9]\d{9}$")
 
@@ -55,6 +56,8 @@ class PricedLine:
     unit_price_paise: int
     amount_paise: int
     group_label: str
+    # The item's own price for this unit; unit_price_paise differs when the biller changed the rate.
+    list_price_paise: int = 0
 
     @property
     def base_qty(self) -> int:
@@ -63,6 +66,10 @@ class PricedLine:
     @property
     def unit_label(self) -> str:
         return "Bundle" if self.sale_unit == "case" else self.product.unit_name
+
+    @property
+    def rate_edited(self) -> bool:
+        return self.unit_price_paise != self.list_price_paise
 
 
 def load_products(ids) -> dict[int, Product]:
@@ -97,7 +104,18 @@ def price_lines(raw_lines, products: dict[int, Product]) -> list[PricedLine]:
         if qty <= 0 or qty > MAX_QTY:
             raise BusinessError(f"Check the quantity for {product.name}.")
         factor = product.units_per_case if sale_unit == "case" else 1
-        unit_price = product.price_paise * factor
+        list_price = product.price_paise * factor
+        # A rate typed by the biller for this bill only; the product's own price stays as it is.
+        rate = raw.get("rate_paise")
+        if rate in (None, ""):
+            unit_price = list_price
+        else:
+            try:
+                unit_price = int(rate)
+            except (TypeError, ValueError):
+                raise BusinessError(f"Check the rate for {product.name}.")
+            if not 0 <= unit_price <= MAX_PAISE:
+                raise BusinessError(f"Check the rate for {product.name}.")
         priced.append(
             PricedLine(
                 product=product,
@@ -107,6 +125,7 @@ def price_lines(raw_lines, products: dict[int, Product]) -> list[PricedLine]:
                 unit_price_paise=unit_price,
                 amount_paise=unit_price * qty,
                 group_label=str(raw.get("group_label") or "").strip()[:40],
+                list_price_paise=list_price,
             )
         )
     return priced
@@ -142,17 +161,13 @@ def unit_cost(product: Product) -> int | None:
     return product.cost_paise
 
 
-def max_discount_bp(user, settings: ShopSettings) -> int:
-    if is_owner(user):
-        return settings.max_discount_bp
-    return min(settings.staff_max_discount_bp, settings.max_discount_bp)
-
-
 def booking_advance(booking: Booking) -> int:
     return booking.payments.aggregate(total=Sum("amount_paise"))["total"] or 0
 
 
-def quote(lines: list[PricedLine], discount_bp: int, doc_type: str, settings: ShopSettings) -> dict:
+def quote(
+    lines: list[PricedLine], discount_bp: int, doc_type: str, settings: ShopSettings, total_paise: int | None = None
+) -> dict:
     gst = doc_type == Invoice.DocType.GST
     return bill_totals(
         sum(line.amount_paise for line in lines),
@@ -160,6 +175,7 @@ def quote(lines: list[PricedLine], discount_bp: int, doc_type: str, settings: Sh
         gst_rate_bp=settings.gst_rate_bp if gst else None,
         prices_include_gst=settings.prices_include_gst if gst else None,
         round_off=settings.round_off,
+        total_paise=total_paise,
     )
 
 
@@ -180,6 +196,8 @@ def shop_snapshot(settings: ShopSettings, doc_type: str) -> dict:
 
 
 def validate_payments(payments, amount_due: int) -> list[dict]:
+    """The bill's payments. They need not add up to the amount due: what is left over is the bill's balance.
+    Cash given that is less than the cash amount is what the customer actually paid in cash."""
     cleaned, modes = [], set()
     for raw in payments or []:
         mode = raw.get("mode")
@@ -191,6 +209,12 @@ def validate_payments(payments, amount_due: int) -> list[dict]:
             tendered = int(tendered) if tendered not in (None, "") else None
         except (TypeError, ValueError):
             raise BusinessError("Check the payment amounts.")
+        if tendered is not None and tendered < 0:
+            raise BusinessError("Check the cash given.")
+        if mode != PaymentMode.CASH or amount < 0:
+            tendered = None
+        if tendered is not None and tendered < amount:
+            amount = tendered
         if amount == 0:
             continue
         if mode in modes:
@@ -200,10 +224,6 @@ def validate_payments(payments, amount_due: int) -> list[dict]:
             raise BusinessError("Payment amounts must be more than zero.")
         if amount_due < 0 and amount > 0:
             raise BusinessError("The advance is more than the bill. Record the extra as money returned.")
-        if mode != PaymentMode.CASH or amount < 0:
-            tendered = None
-        if tendered is not None and tendered < amount:
-            raise BusinessError("Cash given is less than the cash amount.")
         cleaned.append(
             {
                 "mode": mode,
@@ -212,14 +232,6 @@ def validate_payments(payments, amount_due: int) -> list[dict]:
                 "cash_tendered_paise": tendered,
                 "change_paise": tendered - amount if tendered is not None else None,
             }
-        )
-    paid = sum(p["amount_paise"] for p in cleaned)
-    if paid != amount_due:
-        raise BusinessError(
-            f"Payments add up to {rupees(paid)} but {rupees(amount_due)} is due.",
-            code="payment_mismatch",
-            paid_paise=paid,
-            due_paise=amount_due,
         )
     return cleaned
 
@@ -237,6 +249,16 @@ def create_invoice(user, data: dict) -> tuple[Invoice, bool]:
         discount_bp = int(data.get("discount_bp") or 0)
     except (TypeError, ValueError):
         raise BusinessError("Check the discount.")
+    if not 0 <= discount_bp <= 10000:
+        raise BusinessError("The discount should be between 0% and 100%.", code="bad_discount")
+    # A total typed by the biller; the difference from the worked-out total is kept as an adjustment.
+    typed_total = data.get("total_override_paise")
+    try:
+        typed_total = int(typed_total) if typed_total not in (None, "") else None
+    except (TypeError, ValueError):
+        raise BusinessError("Check the bill total.")
+    if typed_total is not None and not 0 <= typed_total <= MAX_PAISE:
+        raise BusinessError("Check the bill total.")
     customer_name = str(data.get("customer_name") or "").strip()[:80]
     customer_phone = validate_phone(data.get("customer_phone"))
 
@@ -245,7 +267,7 @@ def create_invoice(user, data: dict) -> tuple[Invoice, bool]:
             if existing := Invoice.objects.filter(client_uuid=client_uuid).first():
                 return existing, False
             invoice = _create_invoice_locked(
-                user, data, client_uuid, doc_type, discount_bp, customer_name, customer_phone
+                user, data, client_uuid, doc_type, discount_bp, typed_total, customer_name, customer_phone
             )
     except IntegrityError:
         if existing := Invoice.objects.filter(client_uuid=client_uuid).first():
@@ -254,7 +276,9 @@ def create_invoice(user, data: dict) -> tuple[Invoice, bool]:
     return invoice, True
 
 
-def _create_invoice_locked(user, data, client_uuid, doc_type, discount_bp, customer_name, customer_phone) -> Invoice:
+def _create_invoice_locked(
+    user, data, client_uuid, doc_type, discount_bp, typed_total, customer_name, customer_phone
+) -> Invoice:
     settings = ShopSettings.get()
     if doc_type == Invoice.DocType.GST and not settings.gst_ready:
         raise BusinessError(
@@ -265,14 +289,11 @@ def _create_invoice_locked(user, data, client_uuid, doc_type, discount_bp, custo
     counter = Counter.objects.filter(pk=data.get("counter_id"), is_active=True).first()
     if counter is None:
         raise BusinessError("Choose this device's counter first.", code="no_counter")
-    limit = max_discount_bp(user, settings)
-    if discount_bp < 0 or discount_bp > limit:
-        raise BusinessError(f"Discount can be at most {limit / 100:g}%.", code="discount_limit")
 
     raw_lines = data.get("lines") or []
     products = load_products(int(line["product_id"]) for line in raw_lines if "product_id" in line)
     lines = price_lines(raw_lines, products)
-    totals = quote(lines, discount_bp, doc_type, settings)
+    totals = quote(lines, discount_bp, doc_type, settings, typed_total)
 
     booking, advance = None, 0
     if data.get("booking_id"):
@@ -292,6 +313,7 @@ def _create_invoice_locked(user, data, client_uuid, doc_type, discount_bp, custo
             prices={str(p.pk): p.price_paise for p in products.values()},
         )
     payments = validate_payments(data.get("payments"), totals["total_paise"] - advance)
+    balance = totals["total_paise"] - advance - sum(p["amount_paise"] for p in payments)
     location = sale_location()
     needed = stock_needed(lines)
 
@@ -331,7 +353,9 @@ def _create_invoice_locked(user, data, client_uuid, doc_type, discount_bp, custo
         sgst_paise=totals["sgst_paise"],
         round_off_paise=totals["round_off_paise"],
         total_paise=totals["total_paise"],
+        adjustment_paise=totals["adjustment_paise"],
         advance_paise=advance,
+        balance_paise=balance,
         cost_paise=cost_total,
         shop=shop_snapshot(settings, doc_type),
         business_date=today,
@@ -351,6 +375,7 @@ def _create_invoice_locked(user, data, client_uuid, doc_type, discount_bp, custo
                 units_per_sale_unit=line.factor,
                 base_qty=line.base_qty,
                 unit_price_paise=line.unit_price_paise,
+                list_price_paise=line.list_price_paise if line.rate_edited else None,
                 amount_paise=line.amount_paise,
                 unit_cost_paise=cost,
                 group_label=line.group_label,
@@ -387,16 +412,52 @@ def _create_invoice_locked(user, data, client_uuid, doc_type, discount_bp, custo
     if booking:
         booking.status = Booking.Status.DELIVERED
         booking.save(update_fields=["status", "updated_at"])
-    if discount_bp:
+    _audit_bill_changes(user, invoice, settings, lines, totals, discount_bp, typed_total, doc_type, balance)
+    return invoice
+
+
+def _audit_bill_changes(user, invoice, settings, lines, totals, discount_bp, typed_total, doc_type, balance) -> None:
+    """The activity log notes what a biller changed on a bill: the discount (when it is not the shop's
+    default), item rates, a typed total, and money not paid or paid extra."""
+    number = invoice.number
+    if discount_bp != settings.default_discount_bp:
         audit(
             user,
             "bill.discount",
-            f"{number}: {discount_bp / 100:g}% off ({rupees(totals['discount_paise'])})",
+            f"{number}: {discount_bp / 100:g}% off ({rupees(totals['discount_paise'])}); "
+            f"the usual discount is {settings.default_discount_bp / 100:g}%",
             invoice,
             discount_bp=discount_bp,
             discount_paise=totals["discount_paise"],
         )
-    return invoice
+    edited = [line for line in lines if line.rate_edited]
+    if edited:
+        audit(
+            user,
+            "bill.rate_change",
+            f"{number}: "
+            + "; ".join(f"{l.product.name} {rupees(l.list_price_paise)} -> {rupees(l.unit_price_paise)}" for l in edited),
+            invoice,
+            lines=[
+                {"code": l.product.code, "from_paise": l.list_price_paise, "to_paise": l.unit_price_paise} for l in edited
+            ],
+        )
+    if totals["adjustment_paise"]:
+        worked_out = quote(lines, discount_bp, doc_type, settings)["total_paise"]
+        audit(
+            user,
+            "bill.total_change",
+            f"{number}: total {rupees(worked_out)} -> {rupees(typed_total)} "
+            f"(adjustment {rupees(totals['adjustment_paise'])})",
+            invoice,
+            from_paise=worked_out,
+            to_paise=typed_total,
+            adjustment_paise=totals["adjustment_paise"],
+        )
+    if balance > 0:
+        audit(user, "bill.balance", f"{number}: {rupees(balance)} not paid", invoice, balance_paise=balance)
+    elif balance < 0:
+        audit(user, "bill.balance", f"{number}: paid {rupees(-balance)} more than the bill", invoice, balance_paise=balance)
 
 
 def cancel_invoice(user, invoice_id: int, reason: str) -> Invoice:

@@ -9,6 +9,7 @@ import { printBill, useBillOutput } from "../lib/print";
 import { useSession } from "../lib/session";
 import { MODE_LABEL, type Bill, type BillSummary, type Paged } from "../lib/types";
 import { Badge, Button, Dialog, Empty, Field, Loading, Notice, PageHead, useToast } from "../components/ui";
+import WhatsAppBillButton from "../components/WhatsAppBillButton";
 
 type BillPage = Paged<BillSummary> & { active_total_paise: number };
 
@@ -57,6 +58,7 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
                   Print view
                 </Link>
               )}
+              <WhatsAppBillButton bill={data} />
               <Button variant="primary" onClick={() => printBill(data).catch((e) => notify(errorText(e), "bad"))}>
                 {onScreen ? <ScreenShare size={16} aria-hidden /> : <Printer size={16} aria-hidden />}
                 {onScreen ? "Show the bill" : "Print again"}
@@ -71,6 +73,7 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
           <div className="stack">
             <div className="row">
               {data.status === "cancelled" ? <Badge tone="bad">Cancelled</Badge> : <Badge tone="good">Active</Badge>}
+              {data.status === "active" && data.balance_paise > 0 ? <Badge tone="warn">Balance due {rs(data.balance_paise)}</Badge> : null}
               <Badge>{data.doc_type === "gst" ? "GST invoice" : "Estimate"}</Badge>
               {data.print_count > 1 ? <Badge>Printed {data.print_count} times</Badge> : null}
               <span className="muted small">
@@ -108,7 +111,10 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
                       <td className="num">
                         {l.qty} {l.unit_label}
                       </td>
-                      <td className="num">{rs(l.unit_price_paise)}</td>
+                      <td className="num">
+                        {rs(l.unit_price_paise)}
+                        {l.list_price_paise !== null ? <div className="small muted">usually {rs(l.list_price_paise)}</div> : null}
+                      </td>
                       <td className="num">{rs(l.amount_paise)}</td>
                     </tr>
                   ))}
@@ -123,6 +129,15 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
                   <>
                     <dt>Discount {pct(data.discount_bp)}</dt>
                     <dd>−{rs(data.discount_paise)}</dd>
+                  </>
+                ) : null}
+                {data.adjustment_paise ? (
+                  <>
+                    <dt>Adjustment (total typed)</dt>
+                    <dd>
+                      {data.adjustment_paise > 0 ? "+" : ""}
+                      {rs(data.adjustment_paise)}
+                    </dd>
                   </>
                 ) : null}
                 {data.doc_type === "gst" ? (
@@ -161,6 +176,12 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
                     note={p.reference}
                   />
                 ))}
+                {data.balance_paise ? (
+                  <>
+                    <dt>{data.balance_paise > 0 ? "Balance due" : "Paid extra"}</dt>
+                    <dd className="balance">{rs(Math.abs(data.balance_paise))}</dd>
+                  </>
+                ) : null}
               </dl>
             </div>
           </div>
@@ -181,8 +202,8 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
       >
         <div className="stack">
           <Notice tone="warn">
-            The items go back into shop stock and the money paid ({data ? rs(data.amount_due_paise) : ""}) is recorded as returned
-            to the customer. The bill stays in the list, marked cancelled. This cannot be undone.
+            The items go back into shop stock and the money paid ({data ? rs(data.amount_due_paise - data.balance_paise) : ""}) is
+            recorded as returned to the customer. The bill stays in the list, marked cancelled. This cannot be undone.
           </Notice>
           <Field label="Why is this bill cancelled?">
             <textarea className="textarea" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
@@ -311,7 +332,10 @@ export default function BillsPage() {
                       {b.counter_name} · {b.user_name}
                     </td>
                     <td className="num">{rs(b.total_paise)}</td>
-                    <td>{b.status === "cancelled" ? <Badge tone="bad">Cancelled</Badge> : <Badge tone="good">Active</Badge>}</td>
+                    <td>
+                      {b.status === "cancelled" ? <Badge tone="bad">Cancelled</Badge> : <Badge tone="good">Active</Badge>}
+                      {b.status === "active" && b.balance_paise > 0 ? <Badge tone="warn">Balance {rs(b.balance_paise)}</Badge> : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>

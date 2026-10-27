@@ -95,6 +95,15 @@ export default function Receipt({ bill, duplicate }: { bill: Bill; duplicate: bo
             <dd>−{rs(bill.discount_paise)}</dd>
           </>
         ) : null}
+        {bill.adjustment_paise ? (
+          <>
+            <dt>Adjustment</dt>
+            <dd>
+              {bill.adjustment_paise > 0 ? "+" : ""}
+              {rs(bill.adjustment_paise)}
+            </dd>
+          </>
+        ) : null}
         {gst ? (
           <>
             <dt>Taxable value</dt>
@@ -137,6 +146,17 @@ export default function Receipt({ bill, duplicate }: { bill: Bill; duplicate: bo
             ) : null}
           </Fragment>
         ))}
+        {bill.balance_paise > 0 ? (
+          <>
+            <dt className="r-strong">Balance due</dt>
+            <dd className="r-strong">{rs(bill.balance_paise)}</dd>
+          </>
+        ) : bill.balance_paise < 0 ? (
+          <>
+            <dt>Paid extra</dt>
+            <dd>{rs(-bill.balance_paise)}</dd>
+          </>
+        ) : null}
       </dl>
 
       <footer className="r-foot">

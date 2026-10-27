@@ -20,6 +20,7 @@ export function roundToRupee(amountPaise: number): number {
 export interface Totals {
   subtotal_paise: number;
   discount_paise: number;
+  adjustment_paise: number;
   taxable_paise: number;
   cgst_paise: number;
   sgst_paise: number;
@@ -27,10 +28,13 @@ export interface Totals {
   total_paise: number;
 }
 
+/** Bill totals. With totalPaise (a total typed by the biller) the bill comes to exactly that amount:
+ *  the difference is an adjustment after the discount (before GST when GST is added on top),
+ *  GST is worked out again from the new total, and there is no round off. */
 export function computeTotals(
   subtotalPaise: number,
   discountBp: number,
-  opts: { gstRateBp?: number | null; pricesIncludeGst?: boolean | null; roundOff?: boolean } = {},
+  opts: { gstRateBp?: number | null; pricesIncludeGst?: boolean | null; roundOff?: boolean; totalPaise?: number | null } = {},
 ): Totals {
   const discount = percentOf(subtotalPaise, discountBp);
   const afterDiscount = subtotalPaise - discount;
@@ -46,11 +50,25 @@ export function computeTotals(
       beforeRound = afterDiscount + tax;
     }
   }
+  let total = opts.roundOff === false ? beforeRound : roundToRupee(beforeRound);
+  let adjustment = 0;
+  const typed = opts.totalPaise;
+  if (typed !== null && typed !== undefined && typed >= 0 && typed !== total) {
+    total = beforeRound = typed;
+    if (opts.gstRateBp) {
+      taxable = divHalfUp(typed * 10000, 10000 + opts.gstRateBp);
+      tax = typed - taxable;
+      adjustment = (opts.pricesIncludeGst ? typed : taxable) - afterDiscount;
+    } else {
+      taxable = typed;
+      adjustment = typed - afterDiscount;
+    }
+  }
   const cgst = Math.floor(tax / 2);
-  const total = opts.roundOff === false ? beforeRound : roundToRupee(beforeRound);
   return {
     subtotal_paise: subtotalPaise,
     discount_paise: discount,
+    adjustment_paise: adjustment,
     taxable_paise: taxable,
     cgst_paise: cgst,
     sgst_paise: tax - cgst,

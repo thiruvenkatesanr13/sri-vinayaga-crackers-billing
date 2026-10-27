@@ -47,10 +47,8 @@ class ShopSettings(models.Model):
     booking_prefix = models.CharField(max_length=20, default="B-")
 
     round_off = models.BooleanField(default=True)
-    # Discounts are whole-bill percentages, stored in basis points (1000 = 10%).
-    default_discount_bp = models.PositiveIntegerField(default=0)
-    max_discount_bp = models.PositiveIntegerField(default=1000)
-    staff_max_discount_bp = models.PositiveIntegerField(default=1000)
+    # Whole-bill discount already applied on a new bill, in basis points (5000 = 50%). Billers can change it on any bill.
+    default_discount_bp = models.PositiveIntegerField(default=5000)
 
     # GST invoices stay disabled until the owner's CA confirms these.
     gst_rate_bp = models.PositiveIntegerField(null=True, blank=True)

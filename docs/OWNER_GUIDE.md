@@ -65,7 +65,7 @@ Open **Settings** and work through the tabs:
 - **Shop details** — name, Tamil name, phones, address, UPI ID, bank details, and the two lines at the bottom of the bill.
 - **Bills & GST**
   - Bill number prefixes. Bills look like `E-00001`.
-  - Discount limits, the default discount, and the low-stock warning level.
+  - The discount already applied on a new bill (50% unless changed; billers can still change it on each bill), and the low-stock warning level.
   - GST invoices stay switched off until the GSTIN, GST rate and HSN code are filled in.
 - **People & PINs**
   - Add each staff member with their own PIN (4–8 digits).
@@ -83,7 +83,7 @@ On **Products**, use **Import from Excel** with the shop's stock sheet. Its colu
 - You never need to clear the sheet. A number that is the same as at the last import is not used again, so importing the same sheet twice changes nothing. If an item really got the same amount again (50 after 50), tick **Again** on that item in the preview.
 - **QTY Removed** is for stock taken out for other reasons, like damage. Bills already take sold stock off.
 - **How many cases for a bundle** is how many pieces make one bundle, or **Nil** if the item isn't sold as a bundle. Items with a bundle size get a **Bundle** button in billing. The size can also be changed on each item in **Products**.
-- **Final Price** is the selling price. A price or bundle size changed in the app stays until the sheet changes it.
+- **Final Price** is the item's price *before* the bill's discount; new bills take 50% off it (see Billing). A price or bundle size changed in the app stays until the sheet changes it.
 - In *Add and take off stock at*, choose where that stock actually is: the **Shop** or the **Godown**.
 - Check the preview before importing. For every item it shows the stock before and after, and any price or bundle change. Rows marked for a check are worth a look: a possible typo, a name that looks cut off, or a guessed category.
 - An item renamed in the sheet comes in as a new item. To keep its stock and sales together, rename it in **Products** first.
@@ -130,9 +130,11 @@ Both counters work on the same shop: one stock, one series of bill numbers, and 
 ### Billing
 
 - Tap an item, or type part of its name or code and press **Enter**. Tap again (or **+**) for more. Use **Bundle** to sell a full bundle.
-- **Discount** applies to the whole bill (0%, 5%, 10% or Other). Staff can give up to the limit set in Settings.
+- **Discount** applies to the whole bill. New bills start at **50%** (change this in Settings → Bills & GST). Tap 0%, 5%, 10% or **Other** to give any discount from 0% to 100%; there is no limit.
+- **Change an item's rate:** tap the rate under the item (for example *₹42.00 / Box*) and type the rate for this bill. It turns blue with the usual price crossed out. Clear it to go back. The price in Products does not change.
+- **Change the total:** tap the total and type the amount agreed with the customer. The difference shows on the bill as **Adjustment**; tap **Undo** next to it to remove it. Changing the items or the discount afterwards drops the typed total, so type it last.
 - **Customer** — add the customer's phone number and name to put them on the bill and to send it on WhatsApp. A returning customer's name fills in from their number.
-- **Payment** — Cash, UPI, Card and others; one bill can be split across several. Type the cash the customer gives and the change shows in green.
+- **Payment** — Cash, UPI, Card and others; one bill can be split across several. Type the cash the customer gives: change shows in green. Nothing blocks saving. If the customer pays less, the bill saves with **Balance due** on it (and on the printed bill); the Bills list marks it **Balance**. To let a shortfall go instead, change the total.
 - **Save & print** (or **F9**). Then **New bill** (or **Esc**). On a laptop set to show bills on screen, the button says **Save & show**.
 - **Send on WhatsApp** on the saved bill opens WhatsApp with the bill as a message to the customer's number (it asks for the number if none was typed). Press **Send** in WhatsApp. WhatsApp links carry text only, so no PDF is sent. The first time, sign in to WhatsApp Web in that browser (scan the QR code with the shop's phone), or install WhatsApp for Windows.
 - **Hold** (**F4**) parks a bill while you serve someone else, up to 3 per counter. Tap the held bill at the top to bring it back.
@@ -151,7 +153,7 @@ If an item is short in the shop, billing says exactly what's left. It never sell
 
 ### Old bills, reprints and cancelling
 
-- **Bills** — search by bill number, customer name or phone. Open a bill to reprint it (the reprint is marked DUPLICATE).
+- **Bills** — search by bill number, customer name or phone. Open a bill to reprint it (the reprint is marked DUPLICATE) or to **Send on WhatsApp** again. The Print view page has the same button.
 - **Cancel bill** (owner only): give a reason. The items go back into stock and the cash shows as returned in the day's cash. Cancelled bills stay on record but never count in sales.
 
 ### Logging out
@@ -191,7 +193,7 @@ Do this once for the whole shop, on either counter.
   - Staff see the dashboard too, but never profit.
   - **Back up now** is at the bottom.
 - **Reports** — sales summary, product-wise, category-wise, profit (owner only) and daily summary, for any dates. **Download Excel** saves any report.
-- **Settings → Activity log** shows who cancelled bills, changed prices or discounts, moved stock and so on.
+- **Settings → Activity log** shows who cancelled bills, changed an item's rate or the total on a bill, gave a discount other than the usual 50%, left a balance unpaid, moved stock and so on.
 
 ---
 
@@ -271,4 +273,4 @@ These were not settled in the requirements. The software works with the defaults
 6. **WhatsApp** — bills open in WhatsApp for the staff to press Send. Fully automatic sending needs a WhatsApp Business API account (paid; not included).
 7. **Delivery charge** for orders below ₹5,000 — not added yet.
 8. **Bookings and stock** — a booking does not set stock aside today; stock is taken when the booking is billed.
-9. **Who can give discount** — default: staff up to 10%, owner up to the limit in Settings, and new bills start at 0%.
+9. **Discount** — new bills start at 50% off the sheet's Final Price, and anyone billing can give any discount (no limit). Confirm that Final Price is the price before this discount, so it isn't cut twice.

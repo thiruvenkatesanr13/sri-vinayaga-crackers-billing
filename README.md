@@ -77,11 +77,16 @@ After rebuilding the screens, restart `serve.py`. WhiteNoise only lists the asse
 | `SVC_DEBUG` | off | `1` turns on Django DEBUG. Use only for development. |
 | `SVC_SECRET_KEY` | generated | Otherwise the key is created once in `data/secret_key.txt`. |
 
-The rest of the shop settings (shop name, phones, bill number prefixes, discount limits, GST, Google Drive folder, the owner's WhatsApp number for the day summary) are edited by the owner in **Settings** and stored in the database. Whether a laptop prints bills or shows them on screen is chosen per laptop (counter button) and kept in that browser.
+The rest of the shop settings (shop name, phones, bill number prefixes, the discount already applied on a new bill, GST, Google Drive folder, the owner's WhatsApp number for the day summary) are edited by the owner in **Settings** and stored in the database. Whether a laptop prints bills or shows them on screen is chosen per laptop (counter button) and kept in that browser.
 
 ## Rules the code relies on
 
 - **Money is integer paise**, and percentages are basis points (10% = 1000). Rounding is half-up. Bill maths (`core/money.py` `bill_totals`, mirrored by `frontend/src/lib/money.ts` `computeTotals`) runs in this order: items total → whole-bill discount → GST (inclusive or exclusive) → round to the rupee. The server recalculates every bill and rejects it if the screen's total is different (`price_changed`).
+- **Billers have no limits.** The whole-bill discount can be anything from 0 to 100% (`default_discount_bp`, 50% unless changed, only sets where a new bill starts).
+  - A line can carry `rate_paise`, a rate for that bill only: `InvoiceLine.unit_price_paise` is what was charged, and `list_price_paise` keeps the product's own price when they differ.
+  - `total_override_paise` is a total typed by the biller. `bill_totals(total_paise=...)` makes the bill come to exactly that: the difference is `adjustment_paise`, applied after the discount (before GST when GST is added on top), GST is worked out again from the new total, and there is no round off. `taxable_paise` includes the adjustment, so the product, category and profit reports stay right.
+  - Payments need not match the amount due. Cash given below the cash amount counts as the cash paid. `Invoice.balance_paise` keeps what was left unpaid (below zero when the customer paid more).
+  - The audit log records rate changes, typed totals, discounts other than the default, and balances.
 - **Stock never goes negative.** `inventory.services.change_stock` does a conditional update inside the transaction, backed by a database CHECK constraint. Every change is written to the `StockMovement` ledger, which is never edited.
 - **Bills are idempotent.** Each draft carries a `client_uuid`, so a double-tapped Save or a retried request can't create two bills. Bill numbers come from `NumberSequence` inside the same transaction (`E-00001`, `G-00001`, and so on), so the two counters can never get the same number.
 - **Cancelling a bill** returns its stock and records a refund payment. The bill itself is kept and marked cancelled. Reports never count cancelled bills.

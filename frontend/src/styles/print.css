@@ -124,6 +124,10 @@
   text-align: right;
 }
 
+.receipt .r-strong {
+  font-weight: 800;
+}
+
 .receipt .r-total {
   font-size: 15px;
   font-weight: 800;

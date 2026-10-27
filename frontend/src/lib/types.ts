@@ -33,9 +33,6 @@ export interface Settings {
   booking_prefix: string;
   round_off: boolean;
   default_discount_bp: number;
-  max_discount_bp: number;
-  staff_max_discount_bp: number;
-  my_max_discount_bp: number;
   gst_rate_bp: number | null;
   hsn_code: string;
   prices_include_gst: boolean | null;
@@ -129,6 +126,8 @@ export interface BillSummary {
   customer_name: string;
   customer_phone: string;
   total_paise: number;
+  /** Still to be paid when the bill was saved; below zero when the customer paid more. */
+  balance_paise: number;
   print_count: number;
 }
 
@@ -143,6 +142,8 @@ export interface BillLine {
   qty: number;
   base_qty: number;
   unit_price_paise: number;
+  /** The item's own price when the rate was changed on this bill; null when it was not changed. */
+  list_price_paise: number | null;
   amount_paise: number;
   group_label: string;
 }
@@ -171,6 +172,7 @@ export interface Bill extends BillSummary {
   cgst_paise: number;
   sgst_paise: number;
   round_off_paise: number;
+  adjustment_paise: number;
   advance_paise: number;
   amount_due_paise: number;
   booking_number: string | null;
@@ -204,6 +206,8 @@ export interface DraftLine {
   sale_unit: "unit" | "case";
   qty: number;
   group_label: string;
+  /** A rate typed by the biller for this bill (per unit or per bundle); empty uses the item's own price. */
+  rate_paise?: number | null;
 }
 
 export interface DraftPayload {
@@ -215,6 +219,9 @@ export interface DraftPayload {
   booking_id: number | null;
   booking_number: string | null;
   booking_advance_paise: number;
+  /** A total typed by the biller, and the worked-out total it replaced; dropped when the bill changes. */
+  total_override_paise?: number | null;
+  total_override_base?: number | null;
 }
 
 export interface Customer {

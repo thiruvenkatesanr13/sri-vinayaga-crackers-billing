@@ -109,7 +109,11 @@ class Invoice(models.Model):
     sgst_paise = models.PositiveBigIntegerField(default=0)
     round_off_paise = models.BigIntegerField(default=0)
     total_paise = models.PositiveBigIntegerField()
+    # When the biller typed the total: the difference from the worked-out total, after the discount.
+    adjustment_paise = models.BigIntegerField(default=0)
     advance_paise = models.BigIntegerField(default=0)
+    # Still to be paid when the bill was saved; below zero when the customer paid more.
+    balance_paise = models.BigIntegerField(default=0)
     # Purchase cost of the goods sold; null when any item's cost is unknown.
     cost_paise = models.PositiveBigIntegerField(null=True, blank=True)
 
@@ -154,6 +158,8 @@ class InvoiceLine(models.Model):
     units_per_sale_unit = models.PositiveIntegerField()
     base_qty = models.PositiveBigIntegerField()
     unit_price_paise = models.PositiveBigIntegerField()
+    # The item's own price when the biller changed the rate on this bill; empty when it was not changed.
+    list_price_paise = models.PositiveBigIntegerField(null=True, blank=True)
     amount_paise = models.PositiveBigIntegerField()
     unit_cost_paise = models.PositiveBigIntegerField(null=True, blank=True)
     group_label = models.CharField(max_length=40, blank=True)

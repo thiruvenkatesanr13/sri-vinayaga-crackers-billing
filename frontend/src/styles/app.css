@@ -1486,6 +1486,48 @@ kbd {
   font-weight: 700;
 }
 
+/* The rate on a bill line is a quiet button: tap it to type a different rate for this bill. */
+.rate-button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.rate-button:hover {
+  color: var(--color-ink-2);
+}
+
+.rate-button.edited {
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+
+.rate-button s {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.rate-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.rate-edit .input {
+  width: 92px;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
 .line .amount {
   grid-area: amount;
   font-weight: 700;
@@ -1692,6 +1734,52 @@ kbd {
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--color-good);
+}
+
+/* Money not paid on a bill (or paid extra): never blocks saving, but is never quiet either. */
+.balance {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-warn-text);
+}
+
+/* The bill total is a button: tap it to type a different total. */
+.figure-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.figure-button svg {
+  color: var(--color-muted);
+}
+
+.figure-button:hover svg {
+  color: var(--color-accent-strong);
+}
+
+.total-edit {
+  width: 11ch;
+  font-size: var(--text-xl);
+  font-weight: 800;
+  text-align: right;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent-strong);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .saved {

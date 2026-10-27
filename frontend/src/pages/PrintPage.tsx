@@ -6,6 +6,7 @@ import { api, errorText } from "../lib/api";
 import type { Bill } from "../lib/types";
 import { Button, Loading, Notice, useToast } from "../components/ui";
 import Receipt from "../components/Receipt";
+import WhatsAppBillButton from "../components/WhatsAppBillButton";
 
 /** Full-page receipt for reprinting an old bill. */
 export default function PrintPage() {
@@ -42,6 +43,7 @@ export default function PrintPage() {
             <Printer size={16} aria-hidden /> Print
           </Button>
         ) : null}
+        {bill.data ? <WhatsAppBillButton bill={bill.data} /> : null}
       </div>
       {bill.isPending ? <Loading /> : null}
       {bill.isError ? (

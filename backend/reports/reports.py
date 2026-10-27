@@ -110,6 +110,7 @@ def sales_summary(filters: Filters) -> dict:
             bills=Count("id", distinct=True),
             gross=Sum("subtotal_paise"),
             discount=Sum("discount_paise"),
+            adjustment=Sum("adjustment_paise"),
             cgst=Sum("cgst_paise"),
             sgst=Sum("sgst_paise"),
             round_off=Sum("round_off_paise"),
@@ -124,12 +125,13 @@ def sales_summary(filters: Filters) -> dict:
                 "bills": g["bills"],
                 "gross_paise": g["gross"] or 0,
                 "discount_paise": g["discount"] or 0,
+                "adjustment_paise": g["adjustment"] or 0,
                 "gst_paise": (g["cgst"] or 0) + (g["sgst"] or 0),
                 "round_off_paise": g["round_off"] or 0,
                 "total_paise": g["total"] or 0,
             }
         )
-    keys = ("bills", "gross_paise", "discount_paise", "gst_paise", "round_off_paise", "total_paise")
+    keys = ("bills", "gross_paise", "discount_paise", "adjustment_paise", "gst_paise", "round_off_paise", "total_paise")
     totals = {k: sum(r[k] for r in rows) for k in keys}
     cancelled = Invoice.objects.filter(
         status=Invoice.Status.CANCELLED, business_date__gte=filters.start, business_date__lte=filters.end
@@ -141,6 +143,7 @@ def sales_summary(filters: Filters) -> dict:
             num("bills", "Bills"),
             money("gross_paise", "Items total"),
             money("discount_paise", "Discount"),
+            money("adjustment_paise", "Adjustment"),
             money("gst_paise", "GST"),
             money("round_off_paise", "Round off"),
             money("total_paise", "Net sales"),
