@@ -26,7 +26,7 @@ backend/
 frontend/src/
   pages/         one file per screen
   components/    shared UI (ui.tsx), app shell, receipt, product picker
-  lib/           API client, money maths (mirrors core/money.py), session, printing (print, or show on screen per laptop), WhatsApp links (bill message for the customer, day summary for the owner), brand (logo files)
+  lib/           API client, money maths (mirrors core/money.py), session, printing (per laptop: printer connected, or no printer = save only), WhatsApp links (bill message for the customer, day summary for the owner), brand (logo files)
   assets/brand/  the shop logo: logo-original.png (as supplied) and the cut versions used by the app
                  (logo.webp full logo, logo-mark.webp round Ganesha mark, logo-receipt.png black line art for the printer)
   styles/        tokens.css (design tokens), app.css, inventory.css, print.css (80 mm receipt)
@@ -77,7 +77,7 @@ After rebuilding the screens, restart `serve.py`. WhiteNoise only lists the asse
 | `SVC_DEBUG` | off | `1` turns on Django DEBUG. Use only for development. |
 | `SVC_SECRET_KEY` | generated | Otherwise the key is created once in `data/secret_key.txt`. |
 
-The rest of the shop settings (shop name, phones, bill number prefixes, the discount already applied on a new bill, GST, Google Drive folder, the owner's WhatsApp number for the day summary) are edited by the owner in **Settings** and stored in the database. Whether a laptop prints bills or shows them on screen is chosen per laptop (counter button) and kept in that browser.
+The rest of the shop settings (shop name, phones, bill number prefixes, the discount already applied on a new bill, GST, Google Drive folder, the owner's WhatsApp number for the day summary) are edited by the owner in **Settings** and stored in the database. Whether a laptop has a bill printer (**Save & print**) or not (**Save**, then Send on WhatsApp) is chosen per laptop (counter button) and kept in that browser (`svc.bill-output` in localStorage).
 
 ## Rules the code relies on
 

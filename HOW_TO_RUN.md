@@ -20,7 +20,7 @@ This file lists everything needed to get the billing software running on a Windo
 | Google Chrome or Microsoft Edge | Yes | Edge comes with Windows. |
 | Internet | Once | Only while `install.bat` runs, to download the Python packages. |
 | A second laptop on the same Wi-Fi | Optional | For Counter 2. Nothing to install on it. |
-| 80 mm thermal receipt printer and its Windows driver | Optional | Without a printer, bills can be shown on screen instead. |
+| 80 mm thermal receipt printer and its Windows driver | Optional | Without a printer, bills are saved and sent to customers on WhatsApp instead. |
 | Google Drive for Desktop | Optional | Keeps a copy of every backup outside the laptop. |
 | Git, Node.js | No | Not needed to run billing: download the ZIP, and the screens come ready-built. Node.js 20.19+ only matters to someone who changes the screens' code. |
 
@@ -70,7 +70,7 @@ Ask whoever manages the Wi-Fi router to give the billing laptop a fixed address 
 ## 6. Bill printer (optional)
 
 - Install the 80 mm printer's driver and make it the **default printer** in Windows. Always open billing with `open_billing.bat`: bills then print straight away, with no print dialog.
-- On a laptop with no printer, click the counter button at the bottom of the menu and choose **Show bills on screen**.
+- On a laptop with no printer, click the counter button at the bottom of the menu and choose **No printer**. Billing then shows **Save** instead of **Save & print**, and the saved bill has **Send on WhatsApp**.
 
 ## 7. Backups
 

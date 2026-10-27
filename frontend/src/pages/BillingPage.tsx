@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type ReactNode } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Gift, Minus, Pause, Pencil, Plus, Printer, ScreenShare, Search, Trash2, UserRound, X } from "lucide-react";
+import { CalendarClock, Gift, Minus, Pause, Pencil, Plus, Printer, Save as SaveIcon, Search, Trash2, UserRound, X } from "lucide-react";
 import { api, ApiError, errorText } from "../lib/api";
 import { fmtDate, fmtTime } from "../lib/format";
 import { computeTotals, paiseToInput, pct, rs, rsShort, toPaise } from "../lib/money";
-import { printBill, useBillOutput } from "../lib/print";
+import { printBill, useHasPrinter } from "../lib/print";
 import { useCategories, useProducts, useSession, useSettings } from "../lib/session";
 import { uuid4 } from "../lib/uuid";
 import {
@@ -162,8 +162,8 @@ export default function BillingPage() {
   const client = useQueryClient();
   const notify = useToast();
   const settings = settingsQuery.data;
-  const onScreen = useBillOutput() === "screen";
-  const BillIcon = onScreen ? ScreenShare : Printer;
+  // With no printer on this laptop, a bill is saved without printing and sent on WhatsApp instead.
+  const hasPrinter = useHasPrinter();
   const [draft, setDraft] = useDraft(counterId, settings?.default_discount_bp ?? 0);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<number | "all">("all");
@@ -446,6 +446,7 @@ export default function BillingPage() {
       void client.invalidateQueries({ queryKey: ["dashboard"] });
       void client.invalidateQueries({ queryKey: ["bills"] });
       if (bill.booking_number) void client.invalidateQueries({ queryKey: ["bookings"] });
+      if (!hasPrinter) return;
       try {
         await printBill(bill);
       } catch (error) {
@@ -718,9 +719,11 @@ export default function BillingPage() {
               </div>
             ) : null}
             <div className="row" style={{ justifyContent: "center" }}>
-              <Button onClick={() => printBill(saved).catch((e) => notify(errorText(e), "bad"))}>
-                <BillIcon size={16} aria-hidden /> {onScreen ? "Show the bill" : "Print again"}
-              </Button>
+              {hasPrinter ? (
+                <Button onClick={() => printBill(saved).catch((e) => notify(errorText(e), "bad"))}>
+                  <Printer size={16} aria-hidden /> Print again
+                </Button>
+              ) : null}
               <WhatsAppBillButton bill={saved} />
             </div>
             <Button variant="primary" size="lg" onClick={startNewBill} autoFocus>
@@ -821,7 +824,7 @@ export default function BillingPage() {
                   Tap an item, or type its name and press Enter.
                   <span className="small key-hints">
                     <br />
-                    <kbd>F2</kbd> search · <kbd>F4</kbd> hold · <kbd>F8</kbd> payment · <kbd>F9</kbd> {onScreen ? "save & show" : "save & print"}
+                    <kbd>F2</kbd> search · <kbd>F4</kbd> hold · <kbd>F8</kbd> payment · <kbd>F9</kbd> {hasPrinter ? "save & print" : "save"}
                   </span>
                 </Empty>
               ) : null}
@@ -1074,8 +1077,8 @@ export default function BillingPage() {
                 ) : null}
 
                 <Button variant="primary" size="lg" block onClick={trySave} disabled={!canSave} loading={save.isPending}>
-                  <BillIcon size={18} aria-hidden />
-                  {onScreen ? "Save & show" : "Save & print"} {rs(due)} <kbd>F9</kbd>
+                  {hasPrinter ? <Printer size={18} aria-hidden /> : <SaveIcon size={18} aria-hidden />}
+                  {hasPrinter ? "Save & print" : "Save"} {rs(due)} <kbd>F9</kbd>
                 </Button>
               </div>
             ) : null}

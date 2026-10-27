@@ -8,11 +8,11 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageCircle,
   Monitor,
   Package,
   Printer,
   Receipt,
-  ScreenShare,
   Settings,
   Truck,
   Users,
@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useSession } from "../lib/session";
-import { PrintHost, setBillOutput, useBillOutput } from "../lib/print";
+import { PrintHost, setHasPrinter, useHasPrinter } from "../lib/print";
 import { brand } from "../lib/brand";
 import { Button, Dialog, IconButton } from "./ui";
 
@@ -54,7 +54,7 @@ function useWideWindow(px: number): boolean {
 
 export function CounterPicker({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { boot, counterId, setCounterId } = useSession();
-  const output = useBillOutput();
+  const hasPrinter = useHasPrinter();
   return (
     <Dialog open={open} title="This laptop" onClose={onClose}>
       <div className="stack">
@@ -79,15 +79,15 @@ export function CounterPicker({ open, onClose }: { open: boolean; onClose: () =>
         </div>
         <h3>Bill printer</h3>
         <div className="people">
-          <button type="button" className="person" aria-pressed={output === "print"} onClick={() => setBillOutput("print")}>
+          <button type="button" className="person" aria-pressed={hasPrinter} onClick={() => setHasPrinter(true)}>
             <Printer size={18} aria-hidden />
-            Print bills
-            <small>The 80 mm printer is the Windows default printer</small>
+            Printer connected
+            <small>Save &amp; print. The 80 mm printer is the Windows default printer</small>
           </button>
-          <button type="button" className="person" aria-pressed={output === "screen"} onClick={() => setBillOutput("screen")}>
-            <ScreenShare size={18} aria-hidden />
-            Show bills on screen
-            <small>No printer on this laptop</small>
+          <button type="button" className="person" aria-pressed={!hasPrinter} onClick={() => setHasPrinter(false)}>
+            <MessageCircle size={18} aria-hidden />
+            No printer
+            <small>Save only, then send the bill on WhatsApp</small>
           </button>
         </div>
       </div>

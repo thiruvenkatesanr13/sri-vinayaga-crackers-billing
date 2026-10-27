@@ -151,13 +151,6 @@
   letter-spacing: 0.12em;
 }
 
-/* The bill shown on screen, on a laptop with no bill printer. */
-.receipt-view {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--color-paper-2);
-}
-
 @media print {
   /* The paper size comes from the printer (the 80 mm roll). The receipt sits in the middle of it,
      clear of the edges the printer cannot reach. */

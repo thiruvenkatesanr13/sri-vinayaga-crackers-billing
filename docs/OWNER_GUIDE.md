@@ -104,7 +104,7 @@ Gift box contents and cost prices (for profit) can be set on each product afterw
 
 Bills always go to the **default** printer. If that is *OneNote* or *Microsoft Print to PDF*, the bill quietly goes there and nothing comes out.
 
-**No printer on a laptop?** Press the counter button at the bottom of the menu and choose **Show bills on screen**. Saved bills then open on the screen instead, with a **Print** button in case you need one. Choose **Print bills** again once the printer is set up.
+**No printer on a laptop?** Press the counter button at the bottom of the menu and choose **No printer**. Billing then shows **Save** instead of **Save & print**: bills are saved without printing, and the saved bill has **Send on WhatsApp**. Choose **Printer connected** again once a printer is set up. Each laptop keeps its own choice.
 
 ### On Counter 2
 
@@ -113,7 +113,7 @@ Nothing needs to be installed.
 1. Connect the laptop to the shop Wi-Fi.
 2. Copy the `scripts` folder to it.
 3. Make a desktop shortcut to `open_billing.bat` and add address 2 after the file name in the shortcut, for example `open_billing.bat http://192.168.1.20:8000`. Billing always opens as a full-screen window. You can also just open address 2 in Chrome or Edge, but bills will then show a print dialog.
-4. If Counter 2 has its own printer, set it up as in step 10. If it has none, choose **Show bills on screen** as in step 10.
+4. If Counter 2 has its own printer, set it up as in step 10. If it has none, choose **No printer** as in step 10.
 5. Log in, and choose **Counter 2** when asked.
 
 Both counters work on the same shop: one stock, one series of bill numbers, and one day closing. Every bill shows which counter made it.
@@ -135,7 +135,7 @@ Both counters work on the same shop: one stock, one series of bill numbers, and 
 - **Change the total:** tap the total and type the amount agreed with the customer. The difference shows on the bill as **Adjustment**; tap **Undo** next to it to remove it. Changing the items or the discount afterwards drops the typed total, so type it last.
 - **Customer** — add the customer's phone number and name to put them on the bill and to send it on WhatsApp. A returning customer's name fills in from their number.
 - **Payment** — Cash, UPI, Card and others; one bill can be split across several. Type the cash the customer gives: change shows in green. Nothing blocks saving. If the customer pays less, the bill saves with **Balance due** on it (and on the printed bill); the Bills list marks it **Balance**. To let a shortfall go instead, change the total.
-- **Save & print** (or **F9**). Then **New bill** (or **Esc**). On a laptop set to show bills on screen, the button says **Save & show**.
+- **Save & print** (or **F9**). Then **New bill** (or **Esc**). On a laptop set to **No printer**, the button says **Save** and nothing prints; send the bill with **Send on WhatsApp**.
 - **Send on WhatsApp** on the saved bill opens WhatsApp with the bill as a message to the customer's number (it asks for the number if none was typed). Press **Send** in WhatsApp. WhatsApp links carry text only, so no PDF is sent. The first time, sign in to WhatsApp Web in that browser (scan the QR code with the shop's phone), or install WhatsApp for Windows.
 - **Hold** (**F4**) parks a bill while you serve someone else, up to 3 per counter. Tap the held bill at the top to bring it back.
 - **Custom box** puts loose items under one heading on the bill, for a box packed on the spot.
@@ -202,7 +202,7 @@ Do this once for the whole shop, on either counter.
 | Problem | What to do |
 | --- | --- |
 | Counter 2 can't open billing | Check each of these: Is Counter 2 on the same Wi-Fi as the billing laptop? Is the black server window open on the billing laptop? Is the network set to **Private**? Was `allow_network.bat` run as administrator? Is Counter 2 using address 2 from the server window? |
-| Bill didn't print | Is the printer on, with paper, and set as the **default** printer (not OneNote or Print to PDF)? Was billing opened with `open_billing.bat`? Is this laptop set to **Print bills** (counter button at the bottom of the menu)? Press **Print again** on the saved bill, or reprint from **Bills**. |
+| Bill didn't print | Is the printer on, with paper, and set as the **default** printer (not OneNote or Print to PDF)? Was billing opened with `open_billing.bat`? Is this laptop set to **Printer connected** (counter button at the bottom of the menu)? Press **Print again** on the saved bill, or reprint from **Bills**. |
 | Staff forgot their PIN, or is locked out | Owner: **Settings → People & PINs**, set a new PIN. A wrong PIN 5 times locks for 5 minutes on its own. |
 | Owner forgot their PIN | Another owner can reset it in Settings. Otherwise, on the billing laptop run `scripts\reset_pin.bat` and type the owner's name and a new PIN. |
 | Billing window shows "screens are not built" | The `backend\frontend_dist` folder is missing. Copy the full software folder again. |

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, Printer, ScreenShare, Search } from "lucide-react";
+import { Ban, Printer, Search } from "lucide-react";
 import { api, errorText, query } from "../lib/api";
 import { fmtDate, fmtDateTime, fmtTime, todayIso } from "../lib/format";
 import { pct, rs } from "../lib/money";
-import { printBill, useBillOutput } from "../lib/print";
+import { printBill, useHasPrinter } from "../lib/print";
 import { useSession } from "../lib/session";
 import { MODE_LABEL, type Bill, type BillSummary, type Paged } from "../lib/types";
 import { Badge, Button, Dialog, Empty, Field, Loading, Notice, PageHead, useToast } from "../components/ui";
@@ -17,7 +17,7 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
   const { isOwner } = useSession();
   const client = useQueryClient();
   const notify = useToast();
-  const onScreen = useBillOutput() === "screen";
+  const hasPrinter = useHasPrinter();
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
   const bill = useQuery({ queryKey: ["bill", id], queryFn: () => api.get<Bill>(`/api/bills/${id}`), enabled: id !== null });
@@ -53,16 +53,17 @@ export function BillDialog({ id, onClose }: { id: number | null; onClose: () => 
                 </Button>
               ) : null}
               <span style={{ flex: 1 }} />
-              {onScreen ? null : (
+              {hasPrinter ? (
                 <Link className="btn" to={`/print/${data.id}`}>
                   Print view
                 </Link>
-              )}
+              ) : null}
               <WhatsAppBillButton bill={data} />
-              <Button variant="primary" onClick={() => printBill(data).catch((e) => notify(errorText(e), "bad"))}>
-                {onScreen ? <ScreenShare size={16} aria-hidden /> : <Printer size={16} aria-hidden />}
-                {onScreen ? "Show the bill" : "Print again"}
-              </Button>
+              {hasPrinter ? (
+                <Button variant="primary" onClick={() => printBill(data).catch((e) => notify(errorText(e), "bad"))}>
+                  <Printer size={16} aria-hidden /> Print again
+                </Button>
+              ) : null}
             </>
           ) : null
         }
