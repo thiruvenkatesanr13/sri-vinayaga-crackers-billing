@@ -22,12 +22,12 @@ LICENSE_UNTIL = date(2027, 2, 1)
 # The admin's public key. A renewal key is a token signed with the matching private key, which
 # only the admin holds (tools/license_private_key.pem, never in this repo).
 PUBLIC_KEY_PEM = b"""-----BEGIN RSA PUBLIC KEY-----
-MIIBCgKCAQEA0vmBiImfq0RqThfzjLz4yfbwgBPlyoE3Rp3Su1abXYgpMX2/HL3o
-uJpAhugEp3/KZhLZzcQMHDFvPvib+uDN8LJLKPfUKNKVR7G1XVbrQjJ7OWvYjsqs
-888j8syqskD4td/XFR4qGktnqQ59ZqsEdVRwZiFu+DAQQEYsGJGlXjPWvJARKKsW
-SvG9a5/gq5QM3doXuBhK/JGzdkhIctfzZy1xbxmg9bWsz9FeCMu5h5T9hndbFKN/
-6x6p1GmiZQvu7YkIA5vABA3/nwBhQxTUl0KExDFu6VdEC8b6EbM/Hc8ZPVcxXzAU
-0GuXIC4jlXwVJB0L44Bji3O3b6FgZxb2TQIDAQAB
+MIIBCgKCAQEA06tQZi/Yxhk/92VXdXya/vpOB12STjAG1OSPO0DpjBG0819dQ8Mp
+nUbXFvzMcD1EELn1QiDU7dijpV9A7+V0R/DMxVUBNg9fLOmDK0UvDDf2A7FSqPr2
+ddreC6Sbw8MUJC6hIM156XCp81DS0ynSXgNR8CdltK0Lj+H+NkGsLNYIJcTdWA0e
+DVE0VoSuCbTU+/qa3hlVEVG4UrUoEwXfSs92xE86Vlm8JBYUjeedR6lTHpkoDiq8
+ZQ7QbymxXe23XOh66in0oAzsiO6/IVphcEk2Hr6iowbVX7vRDUuJtp/VVFqekXiP
+wtlZmOyRpcjCuiDYxGD2DMO73PeIsp2rIwIDAQAB
 -----END RSA PUBLIC KEY-----"""
 
 _pubkey = rsa.PublicKey.load_pkcs1(PUBLIC_KEY_PEM)
