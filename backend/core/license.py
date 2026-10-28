@@ -1,26 +1,26 @@
-"""Licence gate: the app is licensed until a date, after which it stops working and asks the
-shop to contact the admin. A renewal key signed by the admin (see tools/license_sign.py) can
-extend the date; it can never shorten it. Nothing here deletes data, and the management
-commands (restore, clear_data, reset_pin, backup_now) keep working so data is never stuck.
+"""Runtime licence check for the billing app.
 
-To change the lock date, edit LICENSE_UNTIL below. To remove the gate entirely, delete this
-file and the three lines that use it: the "core.license.LicenseMiddleware" entry in
-config/settings.py MIDDLEWARE, and the license lines in core/api.py (bootstrap + license_view).
+The app runs until a set date and then stops, showing the shop a short message to contact the
+administrator. The administrator can issue a signed renewal that moves the date forward. Nothing
+here deletes data, and the maintenance commands keep working, so records are never lost.
 """
 
 import base64
 import json
+import os
 from datetime import date
+from pathlib import Path
 
 import rsa
+from django.conf import settings
 from django.utils import timezone
 
 # The app is licensed until this day (exclusive): it works through the day before and locks on it.
 # 2027-02-01 => works through 31 Jan 2027, locks from 1 Feb 2027.
 LICENSE_UNTIL = date(2027, 2, 1)
 
-# The admin's public key. A renewal key is a token signed with the matching private key, which
-# only the admin holds (tools/license_private_key.pem, never in this repo).
+# The administrator's public key. A renewal is a token signed with the matching private key,
+# which only the administrator holds. This file never contains the private key.
 PUBLIC_KEY_PEM = b"""-----BEGIN RSA PUBLIC KEY-----
 MIIBCgKCAQEA06tQZi/Yxhk/92VXdXya/vpOB12STjAG1OSPO0DpjBG0819dQ8Mp
 nUbXFvzMcD1EELn1QiDU7dijpV9A7+V0R/DMxVUBNg9fLOmDK0UvDDf2A7FSqPr2
@@ -54,12 +54,51 @@ def effective_until(shop) -> date:
     return max(LICENSE_UNTIL, extended) if extended else LICENSE_UNTIL
 
 
+def _state_path() -> Path | None:
+    """A small file beside the database that also holds the latest day seen, so the guard
+    survives a database restore or a full data clear. Off under tests unless SVC_LIC_STATE is set."""
+    override = os.environ.get("SVC_LIC_STATE")
+    if override:
+        return Path(override)
+    try:
+        if settings.TESTING:
+            return None
+        return Path(settings.DATA_DIR) / ".appstate"
+    except Exception:  # noqa: BLE001 - the guard file must never break the app
+        return None
+
+
+def _read_state(path: Path) -> date | None:
+    try:
+        return date.fromordinal(int(path.read_text().strip()))
+    except Exception:  # noqa: BLE001 - a missing or edited file simply does not count
+        return None
+
+
+def _write_state(path: Path, day: date) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp = path.with_name(path.name + ".tmp")
+        temp.write_text(str(day.toordinal()))
+        os.replace(temp, path)
+    except Exception:  # noqa: BLE001 - a read-only disk must not stop billing
+        pass
+
+
 def _today(shop) -> date:
-    """Today, but never earlier than the latest day the app has run, so turning the clock back
-    cannot move the licence date away."""
-    today = timezone.localdate()
+    """Today, but never earlier than the latest day the app has run (kept in the database and in a
+    file beside it), so moving the clock back, restoring an old backup or clearing all data cannot
+    move the licence date away."""
+    day = timezone.localdate()
     seen = getattr(shop, "license_last_seen", None)
-    return max(today, seen) if seen else today
+    if seen and seen > day:
+        day = seen
+    path = _state_path()
+    if path:
+        external = _read_state(path)
+        if external and external > day:
+            day = external
+    return day
 
 
 def license_ok(shop) -> bool:
@@ -67,10 +106,14 @@ def license_ok(shop) -> bool:
 
 
 def mark_seen(shop) -> None:
-    """Remember today as the latest day the app ran (only ever moves forward)."""
-    today = timezone.localdate()
-    if shop.license_last_seen is None or today > shop.license_last_seen:
-        shop.license_last_seen = today
+    """Record the latest day the app has run, in both the database and the file beside it, so the
+    date can only ever move forward."""
+    high = _today(shop)
+    path = _state_path()
+    if path and (_read_state(path) or date.min) < high:
+        _write_state(path, high)
+    if shop.license_last_seen is None or shop.license_last_seen < high:
+        shop.license_last_seen = high
         shop.save(update_fields=["license_last_seen"])
 
 
