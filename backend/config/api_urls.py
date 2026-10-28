@@ -10,6 +10,7 @@ from sales import api as sales
 
 urlpatterns = [
     path("bootstrap", core.bootstrap),
+    path("license", core.license_view),
     path("setup", core.setup),
     path("auth/login", core.login_view),
     path("auth/logout", core.logout_view),

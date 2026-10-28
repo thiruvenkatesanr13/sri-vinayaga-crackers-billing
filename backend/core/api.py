@@ -61,10 +61,14 @@ def _error(exc: BusinessError) -> JsonResponse:
 
 
 def bootstrap_payload(request) -> dict:
-    shop = ShopSettings.objects.filter(pk=1).first()
+    from .license import license_status, mark_seen
+
+    shop = ShopSettings.get()
+    mark_seen(shop)
     setup_required = not User.objects.exists()
     return {
         "setup_required": setup_required,
+        "license": license_status(shop),
         "shop_name": shop.shop_name if shop else "Sri Vinayaga Crackers",
         "shop_name_tamil": shop.shop_name_tamil if shop else "",
         "tagline": shop.tagline if shop else "",
@@ -172,6 +176,26 @@ def logout_view(request):
     return JsonResponse({"ok": True})
 
 
+@csrf_protect
+@require_POST
+def license_view(request):
+    """Accepts a renewal key signed by the admin and re-enables the app. Works while locked and
+    before login, because only a genuinely signed key is accepted."""
+    from .license import effective_until, license_status, verify_key
+
+    key = str(_json_body(request).get("key") or "").strip()
+    until = verify_key(key)
+    if until is None:
+        return _error(BusinessError("This key is not valid. Check it with the admin.", code="bad_license_key"))
+    shop = ShopSettings.get()
+    if until <= effective_until(shop):
+        return _error(BusinessError("This key does not extend the current licence.", code="old_license_key"))
+    shop.license_key = key
+    shop.save(update_fields=["license_key"])
+    audit(request.user, "license.renew", f"Licence extended to {until.isoformat()}")
+    return JsonResponse(license_status(shop))
+
+
 # Settings ------------------------------------------------------------------
 
 _PREFIX = re.compile(r"^[A-Za-z0-9/_-]{1,20}$")
@@ -183,7 +207,7 @@ class SettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ShopSettings
-        exclude = ["id"]
+        exclude = ["id", "license_key", "license_last_seen"]
         read_only_fields = ["updated_at"]
 
     def validate(self, attrs):

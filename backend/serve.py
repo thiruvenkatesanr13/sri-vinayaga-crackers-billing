@@ -93,6 +93,14 @@ def main() -> None:
         print("The screens are not built. Run scripts\\build_frontend.bat first.")
     call_command("migrate", interactive=False, verbosity=0)
 
+    from core.license import license_status
+    from core.models import ShopSettings
+
+    lic = license_status(ShopSettings.get())
+    if not lic["ok"]:
+        print()
+        print("  * This software is not licensed to run. Contact the admin to troubleshoot.")
+
     stop = threading.Event()
     if settings.AUTO_BACKUP:
         threading.Thread(target=backup_loop, args=(stop,), daemon=True, name="auto-backup").start()

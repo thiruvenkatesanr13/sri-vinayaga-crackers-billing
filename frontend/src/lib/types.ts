@@ -15,6 +15,7 @@ export interface Bootstrap {
   users: { id: number; name: string; role: Role }[];
   counters: { id: number; name: string }[];
   me: Me | null;
+  license: { ok: boolean; until: string };
 }
 
 export interface Settings {

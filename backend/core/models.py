@@ -62,6 +62,11 @@ class ShopSettings(models.Model):
 
     owner_whatsapp = models.CharField(max_length=15, blank=True)
 
+    # Licence gate (see core/license.py). license_key holds a signed renewal key from the admin;
+    # license_last_seen is the latest day the app ran, so the clock cannot be turned back past it.
+    license_key = models.TextField(blank=True, default="")
+    license_last_seen = models.DateField(null=True, blank=True)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -4,6 +4,7 @@ import { errorText } from "./lib/api";
 import { SessionProvider, useBootstrap, useSession } from "./lib/session";
 import { Button, Loading, Notice } from "./components/ui";
 import AppShell from "./components/AppShell";
+import LicenseGate from "./components/LicenseGate";
 import SetupPage from "./pages/SetupPage";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -46,6 +47,7 @@ export default function App() {
     );
   }
   const data = boot.data;
+  if (!data.license.ok) return <LicenseGate boot={data} />;
   if (data.setup_required) return <SetupPage />;
   if (!data.me) return <LoginPage boot={data} />;
 
