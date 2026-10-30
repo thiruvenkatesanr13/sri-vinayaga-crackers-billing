@@ -289,7 +289,8 @@ export default function BillingPage() {
   const cash = modes.includes("cash") ? pay.cash : null;
   const change = cash && cash.tendered !== null && cash.amount !== null && cash.tendered > cash.amount ? cash.tendered - cash.amount : null;
 
-  const canSave = !!counterId && draft.lines.length > 0 && unknownLines.length === 0 && (!gst || !!settings?.gst_ready);
+  const needsQty = draft.lines.some((l) => l.qty <= 0);
+  const canSave = !!counterId && draft.lines.length > 0 && !needsQty && unknownLines.length === 0 && (!gst || !!settings?.gst_ready);
 
   function typeTotal(text: string) {
     const value = toPaise(text);
@@ -333,7 +334,7 @@ export default function BillingPage() {
         return { ...d, lines };
       }
       key = uuid4();
-      return { ...d, lines: [...d.lines, { key, product_id: product.id, sale_unit: unit, qty: 1, group_label: group }] };
+      return { ...d, lines: [...d.lines, { key, product_id: product.id, sale_unit: unit, qty: 0, group_label: group }] };
     });
     window.setTimeout(() => setFlash(key), 0);
     setProblem(null);
@@ -531,8 +532,15 @@ export default function BillingPage() {
 
   useEffect(() => {
     if (!flash) return;
-    // Long bills scroll; keep the item just added or increased in view.
-    document.querySelector<HTMLElement>('.lines .line[data-flash="true"]')?.scrollIntoView({ block: "nearest" });
+    // Long bills scroll; keep the item just added or increased in view, and put the cursor in its
+    // quantity box (with the number highlighted) so the biller can type the count straight away.
+    const line = document.querySelector<HTMLElement>('.lines .line[data-flash="true"]');
+    line?.scrollIntoView({ block: "nearest" });
+    const qtyInput = line?.querySelector<HTMLInputElement>(".qty input");
+    if (qtyInput) {
+      qtyInput.focus();
+      qtyInput.select();
+    }
     const timer = window.setTimeout(() => setFlash(null), 650);
     return () => window.clearTimeout(timer);
   }, [flash]);
@@ -863,10 +871,19 @@ export default function BillingPage() {
                             <input
                               aria-label="Quantity"
                               inputMode="numeric"
-                              value={line.qty}
+                              placeholder="0"
+                              value={line.qty === 0 ? "" : line.qty}
+                              onFocus={(e) => e.target.select()}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  searchRef.current?.focus();
+                                  searchRef.current?.select();
+                                }
+                              }}
                               onChange={(e) => {
                                 const qty = Number(e.target.value.replace(/\D/g, "").slice(0, 5));
-                                if (qty > 0) updateLine(line.key, { qty });
+                                updateLine(line.key, { qty });
                               }}
                             />
                             <button type="button" aria-label="One more" onClick={() => updateLine(line.key, { qty: line.qty + 1 })}>
@@ -1076,6 +1093,11 @@ export default function BillingPage() {
                   <Notice tone="warn">The advance is more than this bill. Return {rs(-due)} in cash to the customer.</Notice>
                 ) : null}
 
+                {needsQty ? (
+                  <p className="muted small" style={{ textAlign: "center", margin: "0 0 var(--space-2)" }}>
+                    Type a quantity for each item.
+                  </p>
+                ) : null}
                 <Button variant="primary" size="lg" block onClick={trySave} disabled={!canSave} loading={save.isPending}>
                   {hasPrinter ? <Printer size={18} aria-hidden /> : <SaveIcon size={18} aria-hidden />}
                   {hasPrinter ? "Save & print" : "Save"} {rs(due)} <kbd>F9</kbd>
