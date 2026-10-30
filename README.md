@@ -82,7 +82,7 @@ The rest of the shop settings (shop name, phones, bill number prefixes, the disc
 ## Rules the code relies on
 
 - **Money is integer paise**, and percentages are basis points (10% = 1000). Rounding is half-up. Bill maths (`core/money.py` `bill_totals`, mirrored by `frontend/src/lib/money.ts` `computeTotals`) runs in this order: items total → whole-bill discount → GST (inclusive or exclusive) → round to the rupee. The server recalculates every bill and rejects it if the screen's total is different (`price_changed`).
-- **Billers have no limits.** The whole-bill discount can be anything from 0 to 100% (`default_discount_bp`, 50% unless changed, only sets where a new bill starts).
+- **Billers have no limits.** The whole-bill discount can be anything from 0 to 100% (`default_discount_bp`, 0 unless the owner sets one, only sets where a new bill starts).
   - A line can carry `rate_paise`, a rate for that bill only: `InvoiceLine.unit_price_paise` is what was charged, and `list_price_paise` keeps the product's own price when they differ.
   - `total_override_paise` is a total typed by the biller. `bill_totals(total_paise=...)` makes the bill come to exactly that: the difference is `adjustment_paise`, applied after the discount (before GST when GST is added on top), GST is worked out again from the new total, and there is no round off. `taxable_paise` includes the adjustment, so the product, category and profit reports stay right.
   - Payments need not match the amount due. Cash given below the cash amount counts as the cash paid. `Invoice.balance_paise` keeps what was left unpaid (below zero when the customer paid more).
