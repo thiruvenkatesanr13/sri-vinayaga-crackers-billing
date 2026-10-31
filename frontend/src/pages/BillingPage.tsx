@@ -334,7 +334,7 @@ export default function BillingPage() {
         return { ...d, lines };
       }
       key = uuid4();
-      return { ...d, lines: [...d.lines, { key, product_id: product.id, sale_unit: unit, qty: 0, group_label: group }] };
+      return { ...d, lines: [...d.lines, { key, product_id: product.id, sale_unit: unit, qty: 1, group_label: group }] };
     });
     window.setTimeout(() => setFlash(key), 0);
     setProblem(null);

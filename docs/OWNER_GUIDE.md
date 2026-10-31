@@ -129,7 +129,7 @@ Both counters work on the same shop: one stock, one series of bill numbers, and 
 
 ### Billing
 
-- Tap an item, or type part of its name or code and press **Enter**. The item is added with the cursor in its **quantity** box — type the count (the box starts blank at 0), then press **Enter** to go back to the search box for the next item. **+ / −** also change the quantity. Use **Bundle** to sell a full bundle.
+- Tap an item, or type part of its name or code and press **Enter**. The item is added with quantity **1** and the cursor in its **quantity** box, with the 1 highlighted: type the count to replace it, or leave it as 1. Press **Enter** to go back to the search box for the next item. **+ / −** also change the quantity. Use **Bundle** to sell a full bundle.
 - **Discount** applies to the whole bill. New bills start with **no discount** (the owner can set a starting discount in Settings → Bills & GST). Tap 0%, 5%, 10% or **Other** to give any discount from 0% to 100%; there is no limit.
 - **Change an item's rate:** tap the rate under the item (for example *₹42.00 / Box*) and type the rate for this bill. It turns blue with the usual price crossed out. Clear it to go back. The price in Products does not change.
 - **Change the total:** tap the total and type the amount agreed with the customer. The difference shows on the bill as **Adjustment**; tap **Undo** next to it to remove it. Changing the items or the discount afterwards drops the typed total, so type it last.
